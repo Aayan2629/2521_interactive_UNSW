@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge Sort Tracer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --ink:#172131; --muted:#5B6778; --line:#D5DBE3;
+  --bar:#8C9BB0; --acc:#E08A00; --ic:#2563EB; --jc:#D6336C; --done:#1F9D63;
+  --ltint:#A9C3F5; --rtint:#F2AFC6; --run:#9ED3B8; --tmp:#FBE3B5; --codebg:#F5F7FA; --active:#FFF1D6;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10151D; --surface:#171E29; --ink:#E6EBF2; --muted:#93A0B2; --line:#2A3442;
+    --bar:#55647A; --acc:#F2A322; --ic:#6B98F7; --jc:#F06292; --done:#34C27F;
+    --ltint:#34539A; --rtint:#7D3350; --run:#2B6B4C; --tmp:#5A4415; --codebg:#121821; --active:#3A2E12;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10151D; --surface:#171E29; --ink:#E6EBF2; --muted:#93A0B2; --line:#2A3442;
+  --bar:#55647A; --acc:#F2A322; --ic:#6B98F7; --jc:#F06292; --done:#34C27F;
+  --ltint:#34539A; --rtint:#7D3350; --run:#2B6B4C; --tmp:#5A4415; --codebg:#121821; --active:#3A2E12;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 48px;display:grid;gap:18px}
+header h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,5vw,44px);letter-spacing:-.02em;line-height:1.05;margin:0;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.setup{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end}
+.field{display:grid;gap:6px}
+.lab{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+input[type=text]{font-family:var(--mono);font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:min(300px,100%)}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button,select{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--ic);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:7px 12px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.err{color:var(--jc);font-size:13px;min-height:1em}
+.main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.stage{display:grid;gap:14px}
+.viz{max-width:720px;width:100%;display:grid;gap:4px}
+.lanes{display:flex;gap:6px}
+.bars{height:210px;align-items:flex-end;padding-top:8px}
+.col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;height:100%;transition:opacity .25s}
+.col.out{opacity:.3}
+.val{font-family:var(--mono);font-weight:600;font-size:13px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.barbox{flex:1;width:100%;display:flex;align-items:flex-end}
+.bar{width:100%;border-radius:4px 4px 1px 1px;background:var(--bar);transition:height .25s, background-color .2s, opacity .2s}
+.col.run .bar{background:var(--run)}
+.col.lft .bar{background:var(--ltint)}
+.col.rgt .bar{background:var(--rtint)}
+.col.done .bar{background:var(--done)}
+.col.taken .bar{opacity:.3}
+.col.taken .val{opacity:.4}
+.col.hl .bar{box-shadow:0 0 0 3px var(--ink)}
+.col.wr .bar{animation:pop .35s ease}
+@keyframes pop{40%{transform:translateY(-10px)}}
+@media (prefers-reduced-motion:reduce){.col.wr .bar,.cell.wr{animation:none}.bar,.col{transition:none}}
+.idx{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;width:100%;text-align:center;border-top:3px solid transparent;padding-top:2px}
+.col.inr .idx{border-top-color:var(--ink)}
+.ptrs{height:22px;display:flex;justify-content:center;align-items:flex-start;gap:2px;margin-top:2px;width:100%}
+.chip{font-family:var(--mono);font-size:11px;font-weight:600;line-height:1;padding:3px 5px;border-radius:3px;color:#fff}
+.chip.i{background:var(--ic)}.chip.j{background:var(--jc)}.chip.k{background:var(--acc)}.chip.m{background:var(--muted)}
+.tmpl{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
+.tmpl .lab{margin:0}
+.cells .slot{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cell{width:100%;height:34px;border-radius:5px;display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:13px;border:1px dashed var(--line);color:var(--ink);font-variant-numeric:tabular-nums}
+.cell.on{border:1px solid var(--acc)}
+.cell.full{background:var(--tmp);border:1px solid var(--acc)}
+.cell.wr{animation:pop .35s ease}
+.cell.none{visibility:hidden}
+.tree{display:grid;gap:4px;margin-top:6px}
+.node{border:1px solid var(--line);border-radius:5px;font-family:var(--mono);font-size:11px;text-align:center;padding:3px 2px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:clip;min-width:0}
+.node.sorted{background:var(--run);color:var(--ink);border-color:transparent}
+.node.act{border:2px solid var(--acc);color:var(--ink)}
+.say{font-size:16px;min-height:3.2em;padding:12px 14px;border-radius:8px;background:var(--codebg);border:1px solid var(--line)}
+.say b{font-family:var(--mono);font-weight:600}
+.transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.transport .play{background:var(--ink);color:var(--surface);border-color:var(--ink);min-width:78px}
+.scrub{flex:1 1 200px;display:flex;gap:10px;align-items:center}
+.scrub input{flex:1;accent-color:var(--acc)}
+.stepno{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw8{width:12px;height:12px;border-radius:3px;display:inline-block}
+.side{display:grid;gap:18px;min-width:0}
+.side h2{font-family:var(--display);font-size:17px;font-weight:600;margin:0 0 10px}
+pre.code{font-variant-ligatures:none;margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--codebg);border:1px solid var(--line);border-radius:8px;padding:8px 0;overflow-x:auto}
+pre.code div{padding:0 12px;white-space:pre;border-left:3px solid transparent}
+pre.code div.on{background:var(--active);border-left-color:var(--acc)}
+.cm{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{display:grid}
+.stat .n{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column-reverse;gap:4px;font-family:var(--mono);font-size:12.5px;margin-top:12px}
+.frame{padding:5px 9px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}
+.frame.top{color:var(--ink);border-color:var(--ink)}
+.frame.pt{border-style:dashed}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Merge Sort Tracer</h1>
+    <p>Step through the COMP2521 week 2 merge sort code. Watch the array get split in half, then merged back together through the <code>tmp</code> array. Switch to bottom-up to see the non-recursive version.</p>
+  </header>
+
+  <section class="panel setup" aria-label="Setup">
+    <div class="field">
+      <label class="lab" for="arr">Array (2–16 numbers, 0–99)</label>
+      <input type="text" id="arr" value="5 2 4 7 3 1 2 6" spellcheck="false">
+    </div>
+    <div class="field">
+      <span class="lab">Presets</span>
+      <div class="row">
+        <button data-preset="5 2 4 7 3 1 2 6">Slide example</button>
+        <button data-preset="2 4 5 7 1 2 3 6">Just the final merge</button>
+        <button data-preset="9 3 7 1 8 2 5">Odd length</button>
+        <button data-preset="1 2 3 4 5 6 7 8">Already sorted</button>
+        <button id="rand">Random</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="lab">Version</span>
+      <div class="seg" role="group" aria-label="Version">
+        <button data-mode="td" aria-pressed="true">Top-down (recursive)</button>
+        <button data-mode="bu" aria-pressed="false">Bottom-up</button>
+      </div>
+    </div>
+    <div class="err" id="err" role="alert"></div>
+  </section>
+
+  <div class="main">
+    <section class="panel stage" aria-label="Visualiser">
+      <div class="viz">
+        <span class="lab">items[ ]</span>
+        <div class="lanes bars" id="bars"></div>
+        <div class="tmpl"><span class="lab">tmp[ ]</span><span id="tmpinfo"></span></div>
+        <div class="lanes cells" id="cells"></div>
+        <div class="tmpl"><span class="lab" id="treelab">Split tree</span></div>
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="say" id="say" aria-live="polite"></div>
+      <div class="transport">
+        <button id="first" title="Back to start">⏮</button>
+        <button id="prev" title="Previous step (←)">◀ Prev</button>
+        <button id="play" class="play" title="Play / pause (space)">Play</button>
+        <button id="next" title="Next step (→)">Next ▶</button>
+        <select id="speed" aria-label="Speed">
+          <option value="1100">Slow</option>
+          <option value="600" selected>Normal</option>
+          <option value="250">Fast</option>
+        </select>
+        <div class="scrub">
+          <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step">
+          <span class="stepno" id="stepno"></span>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="sw8" style="background:var(--ltint)"></i>left half (lo..mid)</span>
+        <span><i class="sw8" style="background:var(--rtint)"></i>right half (mid+1..hi)</span>
+        <span><i class="sw8" style="background:var(--tmp);border:1px solid var(--acc)"></i>copied into tmp</span>
+        <span><i class="sw8" style="background:var(--run)"></i>sorted run</span>
+        <span><i class="sw8" style="background:var(--done)"></i>fully sorted</span>
+        <span>faded bar = already copied to tmp</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Code</h2>
+        <pre class="code" id="code"></pre>
+      </section>
+      <section class="panel">
+        <div class="stats">
+          <div class="stat"><span class="lab">Comparisons</span><span class="n" id="cmp">0</span></div>
+          <div class="stat"><span class="lab">Copies</span><span class="n" id="cpy">0</span></div>
+          <div class="stat"><span class="lab" id="deplab">Depth (max)</span><span class="n" id="dep">0</span></div>
+        </div>
+        <span class="lab" style="display:block;margin-top:14px">Call stack (top = running now)</span>
+        <div class="stack" id="stack"></div>
+        <p class="note">Copies counts every write into <code>tmp</code> and every write back into <code>items</code>. Keys: <kbd>←</kbd> <kbd>→</kbd> step, <kbd>space</kbd> play/pause.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+// Code exactly as on the lecture slides (33, 34, 43)
+const SORT_TD = [
+  'void mergeSort(Item items[], int lo, int hi) {',
+  '    if (lo >= hi) return;',
+  '    int mid = (lo + hi) / 2;',
+  '    mergeSort(items, lo, mid);',
+  '    mergeSort(items, mid + 1, hi);',
+  '    merge(items, lo, mid, hi);',
+  '}'
+];
+const SORT_BU = [
+  'void mergeSortBottomUp(Item items[], int lo, int hi) {',
+  '    for (int m = 1; m <= hi - lo; m *= 2) {',
+  '        for (int i = lo; i <= hi - m; i += 2 * m) {',
+  '            int end = min(i + 2 * m - 1, hi);',
+  '            merge(items, i, i + m - 1, end);',
+  '        }',
+  '    }',
+  '}'
+];
+const MERGE = [
+  'void merge(Item items[], int lo, int mid, int hi) {',
+  '    Item *tmp = malloc((hi - lo + 1) * sizeof(Item));',
+  '    int i = lo, j = mid + 1, k = 0;',
+  '    <c>// Scan both segments, copying to `tmp\'.</c>',
+  '    while (i <= mid && j <= hi) {',
+  '        if (le(items[i], items[j])) {',
+  '            tmp[k++] = items[i++];',
+  '        } else {',
+  '            tmp[k++] = items[j++];',
+  '        }',
+  '    }',
+  '    <c>// Copy items from unfinished segment.</c>',
+  '    while (i <= mid) tmp[k++] = items[i++];',
+  '    while (j <= hi) tmp[k++] = items[j++];',
+  '    <c>// Copy `tmp\' back to main array.</c>',
+  '    for (i = lo, k = 0; i <= hi; i++, k++) {',
+  '        items[i] = tmp[k];',
+  '    }',
+  '    free(tmp);',
+  '}'
+];
+// merge line ids (index inside MERGE)
+const M = {head:0, malloc:1, init:2, cmp:5, takeL:6, takeR:8, restL:12, restR:13, back:15, free:18};
+
+const $ = id => document.getElementById(id);
+let mode = 'td', steps = [], nodes = [], cur = 0, timer = null;
+const sortLen = () => (mode==='td' ? SORT_TD : SORT_BU).length;
+const ML = k => sortLen() + 1 + M[k];   // absolute line number of a merge line
+
+// Build every step up front; the player just moves through the list.
+function build(input){
+  const a = input.slice(), n = a.length, S = [], stack = [];
+  const sorted = new Set();   // keys "lo-hi" of runs known to be sorted
+  let cmp = 0, cpy = 0, depth = 0, maxDepth = 0;
+  nodes = [];
+  const snap = o => S.push(Object.assign({arr:a.slice(), stack:stack.slice(), sorted:new Set(sorted), cmp, cpy, depth, maxDepth,
+    lo:null, hi:null, mid:null, i:null, j:null, k:null, tmp:null, taken:[], hl:[], wr:[], act:null, line:null, msg:'', all:false}, o));
+  const v = i => `<b>items[${i}]=${a[i]}</b>`;
+
+  function merge(lo, mid, hi){
+    const tmp = new Array(hi-lo+1).fill(null);
+    const base = () => ({lo, hi, mid, act:`${lo}-${hi}`, tmp:tmp.slice()});
+    const taken = [];
+    stack.push(`merge(items, ${lo}, ${mid}, ${hi})`);
+    snap(Object.assign(base(), {line:ML('malloc'), msg:`Make a temporary array <b>tmp</b> with room for ${hi-lo+1} items. Left run is ${lo}..${mid}, right run is ${mid+1}..${hi}. Both are already sorted.`}));
+    let i = lo, j = mid+1, k = 0;
+    snap(Object.assign(base(), {i, j, k, line:ML('init'), msg:`<b>i</b> points at the smallest unmerged item on the left, <b>j</b> at the smallest on the right, <b>k</b> at the next free slot in tmp.`}));
+    while (i <= mid && j <= hi){
+      cmp++;
+      if (a[i] <= a[j]){
+        const why = a[i] === a[j] ? `They're equal, so take from the <b>left</b>. This is what makes merge sort stable.` : `${a[i]} is smaller, so it goes next.`;
+        tmp[k] = a[i]; taken.push(i); cpy++;
+        const oi = i, ok = k; i++; k++;
+        snap(Object.assign(base(), {i, j, k, taken:taken.slice(), hl:[oi, j], wrk:ok, line:ML('takeL'), msg:`Compare ${v(oi)} with ${v(j)}. ${why} Copy it to <b>tmp[${ok}]</b>.`}));
+      } else {
+        tmp[k] = a[j]; taken.push(j); cpy++;
+        const oj = j, ok = k; j++; k++;
+        snap(Object.assign(base(), {i, j, k, taken:taken.slice(), hl:[i, oj], wrk:ok, line:ML('takeR'), msg:`Compare ${v(i)} with ${v(oj)}. ${a[oj]} is smaller, so copy it from the right to <b>tmp[${ok}]</b>.`}));
+      }
+    }
+    if (i <= mid) snap(Object.assign(base(), {i, j, k, taken:taken.slice(), line:ML('cmp')-1, msg:`The right run is used up. Whatever is left on the left is already sorted and bigger than everything in tmp, so copy it straight across.`}));
+    else if (j <= hi) snap(Object.assign(base(), {i, j, k, taken:taken.slice(), line:ML('cmp')-1, msg:`The left run is used up. Copy the rest of the right run straight across.`}));
+    while (i <= mid){ tmp[k] = a[i]; taken.push(i); cpy++; const oi=i, ok=k; i++; k++;
+      snap(Object.assign(base(), {i, j, k, taken:taken.slice(), hl:[oi], wrk:ok, line:ML('restL'), msg:`Copy leftover ${v(oi)} to <b>tmp[${ok}]</b>.`})); }
+    while (j <= hi){ tmp[k] = a[j]; taken.push(j); cpy++; const oj=j, ok=k; j++; k++;
+      snap(Object.assign(base(), {i, j, k, taken:taken.slice(), hl:[oj], wrk:ok, line:ML('restR'), msg:`Copy leftover ${v(oj)} to <b>tmp[${ok}]</b>.`})); }
+    for (let x = lo; x <= hi; x++){ a[x] = tmp[x-lo]; cpy++; }
+    sorted.add(`${lo}-${hi}`);
+    snap(Object.assign(base(), {wr:range(lo,hi), line:ML('back'), msg:`tmp is full and sorted. Copy it back into <b>items[${lo}..${hi}]</b>. That whole range is now one sorted run.`}));
+    snap({lo, hi, act:`${lo}-${hi}`, line:ML('free'), msg:`<b>free(tmp)</b>. This merge is done. Merge sort needs this extra memory, so it isn't in-place.`});
+    stack.pop();
+  }
+
+  function td(lo, hi, d){
+    nodes.push({lo, hi, row:d});
+    stack.push(`mergeSort(items, ${lo}, ${hi})`);
+    depth = stack.length; maxDepth = Math.max(maxDepth, depth);
+    snap({lo, hi, act:`${lo}-${hi}`, line:0, msg:`Call <b>mergeSort(items, ${lo}, ${hi})</b>.`});
+    if (lo >= hi){
+      sorted.add(`${lo}-${hi}`);
+      snap({lo, hi, act:`${lo}-${hi}`, line:1, msg:`Just one item (${v(lo)}). One item is always sorted, so return.`});
+      stack.pop(); depth = stack.length; return;
+    }
+    const mid = Math.floor((lo+hi)/2);
+    snap({lo, hi, mid, act:`${lo}-${hi}`, line:2, msg:`mid = (${lo} + ${hi}) / 2 = <b>${mid}</b> (C integer division rounds down). Nothing is copied. We just pass smaller index ranges down.`});
+    snap({lo, hi, mid, act:`${lo}-${hi}`, line:3, msg:`Sort the left half: indices ${lo}..${mid}.`});
+    td(lo, mid, d+1); depth = stack.length;
+    snap({lo, hi, mid, act:`${lo}-${hi}`, line:4, msg:`Left half is sorted. Now sort the right half: indices ${mid+1}..${hi}.`});
+    td(mid+1, hi, d+1); depth = stack.length;
+    snap({lo, hi, mid, act:`${lo}-${hi}`, line:5, msg:`Both halves are sorted. Merge them together.`});
+    merge(lo, mid, hi); depth = stack.length;
+    stack.pop(); depth = stack.length;
+  }
+
+  function bu(lo, hi){
+    for (let x = lo; x <= hi; x++){ nodes.push({lo:x, hi:x, row:0}); sorted.add(`${x}-${x}`); }
+    stack.push(`mergeSortBottomUp(items, ${lo}, ${hi})`);
+    snap({line:0, msg:`Start bottom-up. Every single item is already a sorted run of length 1.`});
+    let pass = 0;
+    for (let m = 1; m <= hi - lo; m *= 2){
+      pass++; depth = pass; maxDepth = pass;
+      snap({line:1, msg:`Pass ${pass}: <b>m = ${m}</b>. Merge neighbouring runs of length ${m} into runs of length ${2*m}.`});
+      for (let i = lo; i <= hi - m; i += 2*m){
+        const end = Math.min(i + 2*m - 1, hi);
+        nodes.push({lo:i, hi:end, row:pass});
+        snap({lo:i, hi:end, mid:i+m-1, act:`${i}-${end}`, line:3, msg:`i = ${i}, end = min(${i} + ${2*m} - 1, ${hi}) = <b>${end}</b>. Merge runs ${i}..${i+m-1} and ${i+m}..${end}.`});
+        merge(i, i+m-1, end);
+      }
+    }
+    stack.pop();
+  }
+
+  snap({line:null, msg:`Ready. Press <b>Next</b> or <b>Play</b> to start sorting [${a.join(', ')}].`});
+  if (mode === 'td') td(0, n-1, 0); else bu(0, n-1);
+  snap({line:null, all:true, msg:`Sorted! <b>${cmp}</b> comparisons and <b>${cpy}</b> copies. Merge sort always does about n log n work, even when the input starts sorted.`});
+  // bottom-up: runs with no partner still need a node in later rows so the tree reads cleanly
+  if (mode === 'bu'){
+    const rows = Math.max(...nodes.map(x=>x.row));
+    for (let r = 1; r <= rows; r++){
+      const cov = new Array(n).fill(false);
+      nodes.filter(x=>x.row===r).forEach(x=>{ for(let t=x.lo;t<=x.hi;t++) cov[t]=true; });
+      let t = 0;
+      while (t < n){ if (cov[t]){ t++; continue; } let s = t; while (t < n && !cov[t]) t++;
+        const prev = nodes.filter(x=>x.row<r && x.lo<=s && x.hi>=t-1).sort((p,q)=>q.row-p.row)[0];
+        nodes.push({lo:prev?prev.lo:s, hi:prev?prev.hi:t-1, row:r, carry:true}); }
+    }
+  }
+  return S;
+}
+function range(a,b){ const r=[]; for(let x=a;x<=b;x++) r.push(x); return r; }
+
+function renderCode(line){
+  const lines = (mode==='td' ? SORT_TD : SORT_BU).concat([''], MERGE);
+  $('code').innerHTML = lines.map((t,i)=>{
+    let s = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+             .replace(/&lt;c&gt;(.*?)&lt;\/c&gt;/, '<span class="cm">$1</span>');
+    return `<div class="${i===line?'on':''}">${s || ' '}</div>`;
+  }).join('');
+  const on = $('code').querySelector('.on');
+  if (on && timer) on.scrollIntoView({block:'nearest'});
+}
+
+function render(){
+  const s = steps[cur], n = s.arr.length, max = Math.max(...s.arr, 1);
+  const merging = s.tmp !== null;
+  // run colouring: biggest sorted run each index belongs to (size >= 2)
+  const inRun = new Array(n).fill(false);
+  s.sorted.forEach(key=>{ const [p,q] = key.split('-').map(Number); if (q>p) for(let x=p;x<=q;x++) inRun[x]=true; });
+  let bars = '', cells = '';
+  for (let x=0;x<n;x++){
+    const inr = s.lo!==null && x>=s.lo && x<=s.hi;
+    const cls = ['col'];
+    if (s.lo!==null && !inr) cls.push('out');
+    if (inr) cls.push('inr');
+    if (s.all) cls.push('done');
+    else if (merging && inr && !s.wr.length) cls.push(x<=s.mid ? 'lft' : 'rgt');
+    else if (inRun[x]) cls.push('run');
+    if (s.taken.includes(x)) cls.push('taken');
+    if (s.hl.includes(x)) cls.push('hl');
+    if (s.wr.includes(x)) cls.push('wr');
+    const chips = [];
+    if (merging && s.i===x && s.i<=s.mid) chips.push('<span class="chip i">i</span>');
+    if (merging && s.j===x && s.j<=s.hi) chips.push('<span class="chip j">j</span>');
+    if (!merging && s.mid===x) chips.push('<span class="chip m">mid</span>');
+    const h = 6 + 94*(s.arr[x]/max);
+    bars += `<div class="${cls.join(' ')}"><span class="val">${s.arr[x]}</span><div class="barbox"><div class="bar" style="height:${h}%"></div></div><span class="idx">${x}</span><div class="ptrs">${chips.join('')}</div></div>`;
+    // tmp slot sits directly under the item it will be copied back to
+    if (merging && inr){
+      const kk = x - s.lo, val = s.tmp[kk];
+      const c = ['cell']; if (val!==null) c.push('full'); if (s.k===kk) c.push('on'); if (s.wrk===kk) c.push('wr');
+      cells += `<div class="slot"><div class="${c.join(' ')}">${val===null?'':val}</div><div class="ptrs">${s.k===kk?'<span class="chip k">k</span>':''}</div></div>`;
+    } else cells += `<div class="slot"><div class="cell none"></div><div class="ptrs"></div></div>`;
+  }
+  $('bars').innerHTML = bars; $('cells').innerHTML = cells;
+  $('tmpinfo').textContent = merging ? `size ${s.hi-s.lo+1}, tmp[k] lines up with items[lo + k]` : 'not allocated right now';
+
+  // split tree / pass rows
+  const rows = Math.max(0, ...nodes.map(x=>x.row));
+  $('tree').style.gridTemplateColumns = `repeat(${n}, minmax(0,1fr))`;
+  $('treelab').textContent = mode==='td' ? 'Split tree (top = whole array, each row = one level of recursion)' : 'Passes (top = runs of 1, each row = one pass)';
+  $('tree').innerHTML = nodes.map(nd=>{
+    const key = `${nd.lo}-${nd.hi}`;
+    const isSorted = s.all || s.sorted.has(key);
+    const c = ['node']; if (isSorted) c.push('sorted'); if (s.act===key && !nd.carry) c.push('act');
+    const txt = isSorted ? s.arr.slice(nd.lo, nd.hi+1).join(' ') : (nd.lo===nd.hi ? `${nd.lo}` : `${nd.lo}–${nd.hi}`);
+    return `<div class="${c.join(' ')}" style="grid-column:${nd.lo+1} / ${nd.hi+2};grid-row:${nd.row+1}" title="indices ${nd.lo}..${nd.hi}">${txt}</div>`;
+  }).join('');
+
+  $('say').innerHTML = s.msg;
+  $('cmp').textContent = s.cmp; $('cpy').textContent = s.cpy;
+  $('deplab').textContent = mode==='td' ? 'Depth (max)' : 'Pass';
+  $('dep').textContent = mode==='td' ? `${s.depth} (${s.maxDepth})` : `${s.depth}`;
+  $('stack').innerHTML = s.stack.map((f,x)=>`<div class="frame${x===s.stack.length-1?' top':''}${f.startsWith('merge(')?' pt':''}">${f}</div>`).join('') || '<div class="frame">(empty)</div>';
+  renderCode(s.line);
+  $('scrub').value = cur; $('stepno').textContent = `${cur} / ${steps.length-1}`;
+  $('prev').disabled = cur===0; $('first').disabled = cur===0; $('next').disabled = cur===steps.length-1;
+}
+
+function go(i){ cur = Math.max(0, Math.min(steps.length-1, i)); render(); if (cur===steps.length-1) stop(); }
+function stop(){ clearInterval(timer); timer=null; $('play').textContent='Play'; }
+function play(){ if (cur===steps.length-1) cur=0; $('play').textContent='Pause'; timer=setInterval(()=>go(cur+1), +$('speed').value); }
+
+function load(){
+  const nums = $('arr').value.trim().split(/[\s,]+/).filter(Boolean).map(Number);
+  if (nums.length<2 || nums.length>16 || nums.some(x=>!Number.isInteger(x)||x<0||x>99)){
+    $('err').textContent = 'Enter 2 to 16 whole numbers between 0 and 99, separated by spaces or commas.';
+    return;
+  }
+  $('err').textContent = '';
+  stop(); steps = build(nums); $('scrub').max = steps.length-1; go(0);
+}
+
+$('arr').addEventListener('change', load);
+$('arr').addEventListener('keydown', e=>{ if(e.key==='Enter') load(); });
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{ $('arr').value=b.dataset.preset; load(); }));
+$('rand').addEventListener('click',()=>{ const n=6+Math.floor(Math.random()*7); $('arr').value=Array.from({length:n},()=>1+Math.floor(Math.random()*20)).join(' '); load(); });
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
+  mode=b.dataset.mode; document.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed', x===b)); load();
+}));
+$('prev').onclick=()=>{stop();go(cur-1)}; $('next').onclick=()=>{stop();go(cur+1)}; $('first').onclick=()=>{stop();go(0)};
+$('play').onclick=()=> timer?stop():play();
+$('speed').onchange=()=>{ if(timer){stop();play();} };
+$('scrub').oninput=e=>{stop();go(+e.target.value)};
+document.addEventListener('keydown',e=>{
+  if (e.target.tagName==='INPUT' && e.target.type==='text') return;
+  if (e.key==='ArrowRight'){e.preventDefault();stop();go(cur+1);}
+  else if (e.key==='ArrowLeft'){e.preventDefault();stop();go(cur-1);}
+  else if (e.key===' '){e.preventDefault(); timer?stop():play();}
+});
+load();
+})();
+</script>
+</body>
+</html>
