@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick Sort Tracer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --ink:#172131; --muted:#5B6778; --line:#D5DBE3;
+  --bar:#8C9BB0; --pivot:#E08A00; --lc:#2563EB; --rc:#D6336C; --done:#1F9D63;
+  --ltint:#C9DAF9; --rtint:#F7CEDC; --codebg:#F5F7FA; --active:#FFF1D6;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10151D; --surface:#171E29; --ink:#E6EBF2; --muted:#93A0B2; --line:#2A3442;
+    --bar:#55647A; --pivot:#F2A322; --lc:#6B98F7; --rc:#F06292; --done:#34C27F;
+    --ltint:#2A4478; --rtint:#6B2A42; --codebg:#121821; --active:#3A2E12;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10151D; --surface:#171E29; --ink:#E6EBF2; --muted:#93A0B2; --line:#2A3442;
+  --bar:#55647A; --pivot:#F2A322; --lc:#6B98F7; --rc:#F06292; --done:#34C27F;
+  --ltint:#2A4478; --rtint:#6B2A42; --codebg:#121821; --active:#3A2E12;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 48px;display:grid;gap:18px}
+header h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,5vw,44px);letter-spacing:-.02em;line-height:1.05;margin:0;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.setup{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end}
+.field{display:grid;gap:6px}
+.lab{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+input[type=text]{font-family:var(--mono);font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:min(300px,100%)}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button,select{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--lc);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:7px 12px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.err{color:var(--rc);font-size:13px;min-height:1em}
+.main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.stage{display:grid;gap:14px}
+.bars{display:flex;max-width:720px;align-items:flex-end;gap:6px;height:260px;padding-top:8px}
+.col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;height:100%;transition:opacity .25s}
+.col.out{opacity:.28}
+.val{font-family:var(--mono);font-weight:600;font-size:13px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.barbox{flex:1;width:100%;display:flex;align-items:flex-end}
+.bar{width:100%;border-radius:4px 4px 1px 1px;background:var(--bar);transition:height .25s, background-color .2s;position:relative}
+.col.lreg .bar{background:var(--ltint)}
+.col.rreg .bar{background:var(--rtint)}
+.col.done .bar{background:var(--done)}
+.col.piv .bar{background:var(--pivot)}
+.col.hl .bar{box-shadow:0 0 0 3px var(--ink)}
+.col.sw .bar{animation:pop .35s ease}
+@keyframes pop{40%{transform:translateY(-10px)}}
+@media (prefers-reduced-motion:reduce){.col.sw .bar{animation:none}.bar,.col{transition:none}}
+.idx{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;width:100%;text-align:center;border-top:3px solid transparent;padding-top:2px}
+.col.inr .idx{border-top-color:var(--ink)}
+.ptrs{height:44px;display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:2px}
+.chip{font-family:var(--mono);font-size:11px;font-weight:600;line-height:1;padding:3px 5px;border-radius:3px;color:#fff}
+.chip.l{background:var(--lc)}.chip.r{background:var(--rc)}.chip.p{background:var(--pivot)}.chip.m{background:var(--muted)}
+.say{font-size:16px;min-height:3.2em;padding:12px 14px;border-radius:8px;background:var(--codebg);border:1px solid var(--line)}
+.say b{font-family:var(--mono);font-weight:600}
+.transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.transport .play{background:var(--ink);color:var(--surface);border-color:var(--ink);min-width:78px}
+.scrub{flex:1 1 200px;display:flex;gap:10px;align-items:center}
+.scrub input{flex:1;accent-color:var(--pivot)}
+.stepno{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw8{width:12px;height:12px;border-radius:3px;display:inline-block}
+.side{display:grid;gap:18px;min-width:0}
+.side>*{min-width:0}
+.side h2{font-family:var(--display);font-size:17px;font-weight:600;margin:0 0 10px}
+pre.code{font-variant-ligatures:none;margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--codebg);border:1px solid var(--line);border-radius:8px;padding:8px 0;overflow-x:auto}
+pre.code div{padding:0 12px;white-space:pre;border-left:3px solid transparent}
+pre.code div.on{background:var(--active);border-left-color:var(--pivot)}
+.cm{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{display:grid}
+.stat .n{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column-reverse;gap:4px;font-family:var(--mono);font-size:12.5px;margin-top:12px}
+.frame{padding:5px 9px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}
+.frame.top{color:var(--ink);border-color:var(--ink)}
+.frame.pt{border-style:dashed}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Quick Sort Tracer</h1>
+    <p>Step through the COMP2521 week 2 partition code one decision at a time. Try the sorted example with the naive pivot to see the O(n²) worst case, then switch to median-of-three.</p>
+  </header>
+
+  <section class="panel setup" aria-label="Setup">
+    <div class="field">
+      <label class="lab" for="arr">Array (2–16 numbers, 0–99)</label>
+      <input type="text" id="arr" value="4 2 7 3 6 1 2 5" spellcheck="false">
+    </div>
+    <div class="field">
+      <span class="lab">Presets</span>
+      <div class="row">
+        <button data-preset="4 2 7 3 6 1 2 5">Slide example 1</button>
+        <button data-preset="1 2 3 4 5 6 7 8">Sorted (worst case)</button>
+        <button data-preset="2 3 7 8 1 4 6 5">Median-of-3 example</button>
+        <button id="rand">Random</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="lab">Pivot choice</span>
+      <div class="seg" role="group" aria-label="Pivot choice">
+        <button data-mode="naive" aria-pressed="true">Naive</button>
+        <button data-mode="median" aria-pressed="false">Median of 3</button>
+        <button data-mode="random" aria-pressed="false">Random</button>
+      </div>
+    </div>
+    <div class="err" id="err" role="alert"></div>
+  </section>
+
+  <div class="main">
+    <section class="panel stage" aria-label="Visualiser">
+      <div class="bars" id="bars"></div>
+      <div class="say" id="say" aria-live="polite"></div>
+      <div class="transport">
+        <button id="first" title="Back to start">⏮</button>
+        <button id="prev" title="Previous step (←)">◀ Prev</button>
+        <button id="play" class="play" title="Play / pause (space)">Play</button>
+        <button id="next" title="Next step (→)">Next ▶</button>
+        <select id="speed" aria-label="Speed">
+          <option value="1100">Slow</option>
+          <option value="600" selected>Normal</option>
+          <option value="250">Fast</option>
+        </select>
+        <div class="scrub">
+          <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Step">
+          <span class="stepno" id="stepno"></span>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="sw8" style="background:var(--pivot)"></i>pivot</span>
+        <span><i class="sw8" style="background:var(--ltint)"></i>confirmed ≤ pivot</span>
+        <span><i class="sw8" style="background:var(--rtint)"></i>confirmed ≥ pivot</span>
+        <span><i class="sw8" style="background:var(--done)"></i>in final position</span>
+        <span><i class="sw8" style="background:var(--bar)"></i>not looked at yet</span>
+        <span>faded = outside current lo..hi</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Code</h2>
+        <pre class="code" id="code"></pre>
+      </section>
+      <section class="panel">
+        <div class="stats">
+          <div class="stat"><span class="lab">Comparisons</span><span class="n" id="cmp">0</span></div>
+          <div class="stat"><span class="lab">Swaps</span><span class="n" id="swp">0</span></div>
+          <div class="stat"><span class="lab">Depth (max)</span><span class="n" id="dep">0</span></div>
+        </div>
+        <span class="lab" style="display:block;margin-top:14px">Call stack (top = running now)</span>
+        <div class="stack" id="stack"></div>
+        <p class="note">Keys: <kbd>←</kbd> <kbd>→</kbd> step, <kbd>space</kbd> play/pause.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+const CODE = [
+  'void quickSort(Item a[], int lo, int hi) {',
+  '    if (lo >= hi) return;',
+  '    choosePivot(a, lo, hi);  <c>// naive: do nothing</c>',
+  '    int p = partition(a, lo, hi);',
+  '    quickSort(a, lo, p - 1);',
+  '    quickSort(a, p + 1, hi);',
+  '}',
+  '',
+  'int partition(Item a[], int lo, int hi) {',
+  '    Item pivot = a[lo];',
+  '    int l = lo + 1, r = hi;',
+  '    while (l < r) {',
+  '        while (l < r && a[l] <= pivot) l++;',
+  '        while (l < r && a[r] >= pivot) r--;',
+  '        if (l == r) break;',
+  '        swap(a, l, r);',
+  '    }',
+  '    if (pivot < a[l]) l--;',
+  '    swap(a, lo, l);',
+  '    return l;',
+  '}'
+];
+const PIVOT_NOTE = {naive:'// naive: do nothing', median:'// median of lo, mid, hi', random:'// swap a random item to lo'};
+
+const $ = id => document.getElementById(id);
+let mode = 'naive', steps = [], cur = 0, timer = null;
+
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// Build the whole trace up front, then the player just moves through it.
+function build(input, mode){
+  const a = input.slice(), n = a.length, S = [], done = new Array(n).fill(false), stack = [];
+  let cmp = 0, swp = 0, maxDepth = 0;
+  const rand = rng(input.reduce((s,v,i)=>s*31+v+i, 7));
+  const snap = o => S.push(Object.assign({arr:a.slice(), done:done.slice(), stack:stack.map(f=>Object.assign({},f)), cmp, swp, maxDepth, lo:null, hi:null, l:null, r:null, pv:null, part:false, hl:[], sw:[], tags:{}, line:null, msg:''}, o));
+  const sw = (i,j) => { const t=a[i]; a[i]=a[j]; a[j]=t; };
+  const v = i => `<b>a[${i}]=${a[i]}</b>`;
+
+  function partition(lo, hi){
+    const pivot = a[lo];
+    const base = {lo, hi, pv:lo, part:true};
+    snap(Object.assign({}, base, {line:9, msg:`The pivot is ${v(lo)}. Everything smaller goes left of it, everything bigger goes right.`}));
+    let l = lo+1, r = hi;
+    snap(Object.assign({}, base, {l, r, line:10, msg:`<b>l</b> starts just after the pivot (index ${l}), <b>r</b> starts at the end (index ${r}).`}));
+    if (!(l < r)) snap(Object.assign({}, base, {l, r, line:11, msg:`l and r already point at the same index, so the scanning loop is skipped.`}));
+    while (l < r){
+      // move l right
+      while (true){
+        if (!(l < r)){ snap(Object.assign({}, base, {l, r, line:12, msg:`l has reached r, so l stops.`})); break; }
+        cmp++;
+        if (a[l] <= pivot){
+          const old = l; l++;
+          snap(Object.assign({}, base, {l, r, hl:[old], line:12, msg:`${v(old)} ≤ ${pivot}, so it already belongs on the left. Move l to ${l}.`}));
+        } else {
+          snap(Object.assign({}, base, {l, r, hl:[l], line:12, msg:`${v(l)} > ${pivot}, so it's on the wrong side. <b>l stops</b> here.`}));
+          break;
+        }
+      }
+      // move r left
+      while (true){
+        if (!(l < r)){ snap(Object.assign({}, base, {l, r, line:13, msg:`r has reached l, so r stops.`})); break; }
+        cmp++;
+        if (a[r] >= pivot){
+          const old = r; r--;
+          snap(Object.assign({}, base, {l, r, hl:[old], line:13, msg:`${v(old)} ≥ ${pivot}, so it already belongs on the right. Move r to ${r}.`}));
+        } else {
+          snap(Object.assign({}, base, {l, r, hl:[r], line:13, msg:`${v(r)} < ${pivot}, so it's on the wrong side. <b>r stops</b> here.`}));
+          break;
+        }
+      }
+      if (l === r){ snap(Object.assign({}, base, {l, r, line:14, msg:`l and r have met at index ${l}. Scanning is finished.`})); break; }
+      const x = a[l], y = a[r];
+      sw(l, r); swp++;
+      snap(Object.assign({}, base, {l, r, sw:[l,r], line:15, msg:`Both items are on the wrong side, so swap them: <b>${x}</b> goes right, <b>${y}</b> goes left.`}));
+    }
+    cmp++;
+    if (pivot < a[l]){
+      const old = l; l--;
+      snap(Object.assign({}, base, {l, r, hl:[old], line:17, msg:`${v(old)} is bigger than the pivot, so swapping it to the front would be wrong. Step back: l = ${l}.`}));
+    } else {
+      snap(Object.assign({}, base, {l, r, hl:[l], line:17, msg:`${v(l)} ≤ ${pivot}, so it's safe to swap to the front. l stays at ${l}.`}));
+    }
+    if (l !== lo){ sw(lo, l); swp++; }
+    snap({lo, hi, pv:l, l, part:true, sw: l!==lo ? [lo,l] : [], line:18,
+      msg: l!==lo ? `Swap the pivot into index ${l}. Now it's <b>${pivot}</b> with ≤ on its left and ≥ on its right.` : `The pivot is already at index ${l}, so the swap does nothing.`});
+    return l;
+  }
+
+  function qs(lo, hi){
+    stack.push({lo, hi}); maxDepth = Math.max(maxDepth, stack.length);
+    snap({lo, hi, line:0, msg:`Call <b>quickSort(a, ${lo}, ${hi})</b>.`});
+    if (lo >= hi){
+      if (lo === hi) done[lo] = true;
+      snap({lo, hi, line:1, msg: lo===hi ? `Only one item (${v(lo)}), so it's already sorted. Return.` : `This range is empty (lo > hi). Return.`});
+      stack.pop(); return;
+    }
+    if (mode === 'naive'){
+      snap({lo, hi, pv:lo, line:2, msg:`Naive pivot: just use the first item, ${v(lo)}.`});
+    } else if (mode === 'median'){
+      const mid = Math.floor((lo+hi)/2);
+      snap({lo, hi, hl:[lo,mid,hi], tags:{[lo]:'lo',[mid]:'mid',[hi]:'hi'}, line:2, msg:`Median of three: compare ${v(lo)}, ${v(mid)} and ${v(hi)}. The middle value becomes the pivot.`});
+      const tryS = (i,j,why) => { cmp++; if (a[i] > a[j]){ sw(i,j); swp++; snap({lo, hi, sw:[i,j], hl:[lo,mid,hi], tags:{[lo]:'lo',[mid]:'mid',[hi]:'hi'}, line:2, msg:why}); } };
+      tryS(mid, lo, `a[mid] > a[lo], so swap them.`);
+      tryS(lo, hi, `a[lo] > a[hi], so swap them.`);
+      tryS(mid, lo, `a[mid] > a[lo] again, so swap them.`);
+      snap({lo, hi, pv:lo, tags:{[mid]:'mid',[hi]:'hi'}, line:2, msg:`Now a[mid] ≤ a[lo] ≤ a[hi], so the median <b>${a[lo]}</b> sits at lo and becomes the pivot.`});
+    } else {
+      const k = lo + Math.floor(rand()*(hi-lo+1));
+      snap({lo, hi, hl:[k], line:2, msg:`Random pivot: randint(${lo}, ${hi}) picked index ${k} (${v(k)}).`});
+      if (k !== lo){ sw(lo,k); swp++; }
+      snap({lo, hi, pv:lo, sw: k!==lo ? [lo,k] : [], line:2, msg: k!==lo ? `Swap it to the front so partition can use a[lo] as the pivot.` : `It's already at lo, so nothing moves.`});
+    }
+    const p = partition(lo, hi);
+    done[p] = true;
+    snap({lo, hi, line:3, msg:`partition returned <b>p = ${p}</b>. The ${a[p]} is now in its final sorted position.`});
+    snap({lo, hi, line:4, msg:`Recurse on the left part: indices ${lo}..${p-1}.`});
+    qs(lo, p-1);
+    snap({lo, hi, line:5, msg:`Left part finished. Now recurse on the right part: indices ${p+1}..${hi}.`});
+    qs(p+1, hi);
+    stack.pop();
+    snap({lo, hi, line:6, msg:`Both halves are sorted, so indices ${lo}..${hi} are sorted. Return.`});
+  }
+
+  snap({line:null, msg:`Ready. Press <b>Next</b> or <b>Play</b> to start sorting [${a.join(', ')}].`});
+  qs(0, n-1);
+  for (let i=0;i<n;i++) done[i] = true;
+  snap({line:null, msg:`Sorted! That took <b>${cmp}</b> comparisons, <b>${swp}</b> swaps and a max recursion depth of <b>${maxDepth}</b>.`});
+  return S;
+}
+
+function renderCode(line){
+  $('code').innerHTML = CODE.map((t,i)=>{
+    let s = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+             .replace(/&lt;c&gt;.*?&lt;\/c&gt;/, `<span class="cm">${PIVOT_NOTE[mode]}</span>`);
+    return `<div class="${i===line?'on':''}">${s || ' '}</div>`;
+  }).join('');
+}
+
+function render(){
+  const s = steps[cur], n = s.arr.length, max = Math.max(...s.arr, 1);
+  let html = '';
+  for (let i=0;i<n;i++){
+    const inr = s.lo!==null && i>=s.lo && i<=s.hi;
+    const cls = ['col'];
+    if (s.lo!==null && !inr) cls.push('out');
+    if (inr) cls.push('inr');
+    if (s.done[i]) cls.push('done');
+    if (s.part && s.l!==null && s.r!==null){
+      if (i>s.lo && i<s.l) cls.push('lreg');
+      else if (i>s.r && i<=s.hi) cls.push('rreg');
+    }
+    if (s.pv===i) cls.push('piv');
+    if (s.hl.includes(i)) cls.push('hl');
+    if (s.sw.includes(i)) cls.push('sw');
+    const chips = [];
+    if (s.pv===i) chips.push('<span class="chip p">pivot</span>');
+    if (s.l===i) chips.push('<span class="chip l">l</span>');
+    if (s.r===i && s.part) chips.push('<span class="chip r">r</span>');
+    if (s.tags[i]) chips.push(`<span class="chip m">${s.tags[i]}</span>`);
+    const h = 6 + 94*(s.arr[i]/max);
+    html += `<div class="${cls.join(' ')}"><span class="val">${s.arr[i]}</span><div class="barbox"><div class="bar" style="height:${h}%"></div></div><span class="idx">${i}</span><div class="ptrs">${chips.join('')}</div></div>`;
+  }
+  $('bars').innerHTML = html;
+  $('say').innerHTML = s.msg;
+  $('cmp').textContent = s.cmp; $('swp').textContent = s.swp;
+  $('dep').textContent = `${s.stack.length} (${s.maxDepth})`;
+  const fr = s.stack.map((f,i)=>`<div class="frame${(i===s.stack.length-1 && !s.part)?' top':''}">quickSort(a, ${f.lo}, ${f.hi})</div>`);
+  if (s.part) fr.push(`<div class="frame pt top">partition(a, ${s.lo}, ${s.hi})</div>`);
+  $('stack').innerHTML = fr.join('') || '<div class="frame">(empty)</div>';
+  renderCode(s.line);
+  $('scrub').value = cur; $('stepno').textContent = `${cur} / ${steps.length-1}`;
+  $('prev').disabled = cur===0; $('first').disabled = cur===0; $('next').disabled = cur===steps.length-1;
+}
+
+function go(i){ cur = Math.max(0, Math.min(steps.length-1, i)); render(); if (cur===steps.length-1) stop(); }
+function stop(){ clearInterval(timer); timer=null; $('play').textContent='Play'; }
+function play(){ if (cur===steps.length-1) cur=0; timer=setInterval(()=>go(cur+1), +$('speed').value); $('play').textContent='Pause'; }
+
+function load(){
+  const raw = $('arr').value.trim().split(/[\s,]+/).filter(Boolean);
+  const nums = raw.map(Number);
+  if (nums.length<2 || nums.length>16 || nums.some(x=>!Number.isInteger(x)||x<0||x>99)){
+    $('err').textContent = 'Enter 2 to 16 whole numbers between 0 and 99, separated by spaces or commas.';
+    return;
+  }
+  $('err').textContent = '';
+  stop(); steps = build(nums, mode); $('scrub').max = steps.length-1; go(0);
+}
+
+$('arr').addEventListener('change', load);
+$('arr').addEventListener('keydown', e=>{ if(e.key==='Enter') load(); });
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{ $('arr').value=b.dataset.preset; load(); }));
+$('rand').addEventListener('click',()=>{ const n=8+Math.floor(Math.random()*5); $('arr').value=Array.from({length:n},()=>1+Math.floor(Math.random()*20)).join(' '); load(); });
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
+  mode=b.dataset.mode; document.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed', x===b)); load();
+}));
+$('prev').onclick=()=>{stop();go(cur-1)}; $('next').onclick=()=>{stop();go(cur+1)}; $('first').onclick=()=>{stop();go(0)};
+$('play').onclick=()=> timer?stop():play();
+$('speed').onchange=()=>{ if(timer){stop();play();} };
+$('scrub').oninput=e=>{stop();go(+e.target.value)};
+document.addEventListener('keydown',e=>{
+  if (e.target.tagName==='INPUT' && e.target.type==='text') return;
+  if (e.key==='ArrowRight'){e.preventDefault();stop();go(cur+1);}
+  else if (e.key==='ArrowLeft'){e.preventDefault();stop();go(cur-1);}
+  else if (e.key===' '){e.preventDefault(); timer?stop():play();}
+});
+load();
+})();
+</script>
+</body>
+</html>
