@@ -1,0 +1,415 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Merge Sort</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: same as the Sets page. Pick a version and an example, then code on the left, the array + tmp on the right, Back/Next underneath. */
+:root {
+  --bg: #f4f5fa;
+  --surface: #ffffff;
+  --ink: #1b1e2b;
+  --muted: #5b6176;
+  --line: #d8dbe8;
+  --accent: #3434dc;
+  --ctl: #5f8a1c;
+  --comment: #767b8c;
+  --cur: #e9e9ff;
+  --cmp: #a8650a; --cmp-bg: #fdf0d6;
+  --ok: #17824a;  --ok-bg: #dcf4e6;
+  --wr: #3434dc;  --wr-bg: #e3e3ff;
+  --ghost: #a3a8b8;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12131a; --surface: #1b1d28; --ink: #e8e9f1; --muted: #9ba1b6; --line: #2f3245;
+    --accent: #9090ff; --ctl: #a9d15c; --comment: #8a8fa2; --cur: #262a48;
+    --cmp: #f2b84f; --cmp-bg: #3a2d14; --ok: #5ee08f; --ok-bg: #163322;
+    --wr: #a3a3ff; --wr-bg: #2a2a58; --ghost: #5d6276;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12131a; --surface: #1b1d28; --ink: #e8e9f1; --muted: #9ba1b6; --line: #2f3245;
+  --accent: #9090ff; --ctl: #a9d15c; --comment: #8a8fa2; --cur: #262a48;
+  --cmp: #f2b84f; --cmp-bg: #3a2d14; --ok: #5ee08f; --ok-bg: #163322;
+  --wr: #a3a3ff; --wr-bg: #2a2a58; --ghost: #5d6276;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: flex; flex-direction: column; gap: 20px; }
+
+header h1 { font-family: var(--font-code); font-size: 1.7rem; margin: 0; color: var(--accent); }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 68ch; }
+
+.impl { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; align-self: flex-start; }
+.impl button { font: 600 0.95rem var(--font-body); border: none; background: transparent; color: var(--muted); padding: 8px 16px; border-radius: 7px; }
+.impl button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+.examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.examples .lbl { font-size: 0.8rem; color: var(--muted); margin-right: 4px; }
+.examples button { font-family: var(--font-code); font-size: 0.85rem; }
+.examples button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+
+.body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .body { grid-template-columns: minmax(0, 1fr); } }
+
+.crumb { font: 600 0.8rem var(--font-code); color: var(--muted); margin-bottom: 6px; }
+.code { font-family: var(--font-code); font-size: 0.84rem; line-height: 1.7; overflow-x: auto; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); padding: 8px 0; min-width: 0; }
+.ln { display: grid; grid-template-columns: 2.4em max-content; padding-right: 14px; white-space: pre; border-left: 3px solid transparent; }
+.ln .no { color: var(--ghost); text-align: right; padding-right: 12px; user-select: none; }
+.ln.cur { background: var(--cur); border-left-color: var(--accent); }
+.kw { color: var(--accent); }
+.ct { color: var(--ctl); }
+.cm { color: var(--comment); font-style: italic; }
+
+.visual { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.arr { overflow-x: auto; }
+.cols { display: flex; gap: 5px; }
+.col { flex: 1 1 0; min-width: 34px; max-width: 56px; display: flex; flex-direction: column; align-items: stretch; }
+.col.split { margin-left: 12px; }
+.col.labels { flex: 0 0 auto; min-width: 0; max-width: none; padding-right: 4px; }
+.col.labels div { font: 700 0.72rem var(--font-code); color: var(--muted); display: flex; align-items: center; justify-content: flex-end; }
+.box { height: 42px; display: grid; place-items: center; font: 700 1.05rem var(--font-code); border-radius: 6px; border: 2px solid var(--ink); background: var(--surface); transition: background .25s, border-color .25s, color .25s, opacity .25s; }
+.box.out { opacity: 0.25; }
+.box.taken { opacity: 0.3; border-style: dashed; }
+.box.compare { background: var(--cmp-bg); border-color: var(--cmp); color: var(--cmp); }
+.box.write { background: var(--wr-bg); border-color: var(--wr); color: var(--wr); }
+.box.run, .box.done { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.box.tmp { border: 2px dashed var(--ghost); }
+.box.tmp.full { border-style: solid; border-color: var(--wr); background: var(--wr-bg); color: var(--wr); }
+.box.none { visibility: hidden; }
+.idx { height: 18px; text-align: center; font: 0.72rem var(--font-code); color: var(--muted); }
+.ptr { height: 20px; text-align: center; font: 700 0.72rem var(--font-code); white-space: nowrap; }
+.p-i, .p-j { color: var(--cmp); } .p-k { color: var(--wr); } .p-mid { color: var(--muted); }
+.gap { height: 6px; }
+@media (max-width: 520px) {
+  .cols { gap: 4px; }
+  .col { min-width: 24px; }
+  .col.split { margin-left: 8px; }
+  .box { height: 36px; font-size: 0.9rem; border-width: 1.5px; }
+  .col.labels div[style] { height: 36px !important; }
+  .col.labels div { font-size: 0.62rem; }
+}
+
+.facts { font-family: var(--font-code); font-size: 0.88rem; color: var(--muted); }
+.facts b { color: var(--ink); }
+
+.msg { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 1rem; line-height: 1.55; min-height: 5.2em; }
+.msg code { font-family: var(--font-code); font-size: 0.9em; }
+
+.steps { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.count { margin-left: auto; font: 0.8rem var(--font-code); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+button { font: 500 0.92rem var(--font-body); padding: 8px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.next { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+button:disabled { opacity: 0.4; cursor: default; }
+button:disabled:hover { border-color: var(--line); }
+
+.key { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--muted); }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--ink); display: inline-block; }
+.sw.c { background: var(--cmp-bg); border-color: var(--cmp); }
+.sw.w { background: var(--wr-bg); border-color: var(--wr); }
+.sw.g { background: var(--ok-bg); border-color: var(--ok); }
+.sw.f { opacity: 0.3; border-style: dashed; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Merge Sort</h1>
+    <p>Pick a version and an example, then press <b>Next</b> to run the code one line at a time. Split the array in half until each piece is one number, then merge the pieces back together in order using <code>tmp</code>.</p>
+  </header>
+
+  <div class="impl" role="group" aria-label="Version">
+    <button data-mode="td" aria-pressed="true">Top-down (recursive)</button>
+    <button data-mode="bu" aria-pressed="false">Bottom-up</button>
+  </div>
+
+  <div class="key">
+    <span><i class="sw c"></i>being compared</span>
+    <span><i class="sw w"></i>in tmp / just copied back</span>
+    <span><i class="sw f"></i>already copied to tmp</span>
+    <span><i class="sw g"></i>sorted piece</span>
+  </div>
+
+  <section class="panel">
+    <div class="examples" id="examples"><span class="lbl">Example:</span></div>
+    <div class="body">
+      <div>
+        <div class="crumb" id="crumb"></div>
+        <div class="code" id="code"></div>
+      </div>
+      <div class="visual">
+        <div class="arr"><div class="cols" id="cols"></div></div>
+        <div class="facts" id="facts"></div>
+        <div class="msg" id="msg" aria-live="polite"></div>
+        <div class="steps">
+          <button id="back">&larr; Back</button>
+          <button class="next" id="next">Next &rarr;</button>
+          <button id="play">Play</button>
+          <button id="again">Start again</button>
+          <span class="count" id="count"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const SORT_TD = [
+    "void mergeSort(Item items[], int lo, int hi) {",
+    "    if (lo >= hi) return;",
+    "    int mid = (lo + hi) / 2;",
+    "    mergeSort(items, lo, mid);",
+    "    mergeSort(items, mid + 1, hi);",
+    "    merge(items, lo, mid, hi);",
+    "}"
+  ];
+  const SORT_BU = [
+    "void mergeSortBottomUp(Item items[], int lo, int hi) {",
+    "    for (int m = 1; m <= hi - lo; m *= 2) {",
+    "        for (int i = lo; i <= hi - m; i += 2 * m) {",
+    "            int end = min(i + 2 * m - 1, hi);",
+    "            merge(items, i, i + m - 1, end);",
+    "        }",
+    "    }",
+    "}"
+  ];
+  const MERGE = [
+    "void merge(Item items[], int lo, int mid, int hi) {",
+    "    Item *tmp = malloc((hi - lo + 1) * sizeof(Item));",
+    "    int i = lo, j = mid + 1, k = 0;",
+    "    // Scan both segments, copying to tmp.",
+    "    while (i <= mid && j <= hi) {",
+    "        if (le(items[i], items[j])) {",
+    "            tmp[k++] = items[i++];",
+    "        } else {",
+    "            tmp[k++] = items[j++];",
+    "        }",
+    "    }",
+    "    // Copy items from unfinished segment.",
+    "    while (i <= mid) tmp[k++] = items[i++];",
+    "    while (j <= hi) tmp[k++] = items[j++];",
+    "    // Copy tmp back to main array.",
+    "    for (i = lo, k = 0; i <= hi; i++, k++) {",
+    "        items[i] = tmp[k];",
+    "    }",
+    "    free(tmp);",
+    "}"
+  ];
+  const EXAMPLES = [
+    ["5 2 4 7 3 1 2 6", "5 2 4 7 3 1 2 6 (slides)"],
+    ["3 1 2", "3 1 2 (short)"],
+    ["9 3 7 1 8", "9 3 7 1 8 (odd length)"],
+    ["1 2 3 4", "1 2 3 4 (already sorted)"]
+  ];
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const c = s => "<code>" + esc(s) + "</code>";
+  let mode = "td", input = EXAMPLES[0][0], steps = [], cur = 0, timer = null;
+
+  function hl(line) {
+    let codePart = line, comment = "";
+    const k = line.indexOf("//");
+    if (k >= 0) { codePart = line.slice(0, k); comment = line.slice(k); }
+    let h = esc(codePart)
+      .replace(/\b(void|int|Item)\b/g, '<span class="kw">$1</span>')
+      .replace(/\b(if|else|for|while|return)\b/g, '<span class="ct">$1</span>');
+    if (comment) h += '<span class="cm">' + esc(comment) + "</span>";
+    return h || " ";
+  }
+
+  // ---------- build every step up front ----------
+  function build(nums) {
+    const a = nums.slice(), n = a.length, S = [], calls = [];
+    const sorted = new Set();
+    const snap = o => S.push(Object.assign({
+      fn: "sort", line: null, msg: "", arr: a.slice(), sorted: new Set(sorted), call: calls[calls.length - 1] || "",
+      lo: null, hi: null, mid: null, i: null, j: null, k: null, tmp: null, taken: [], hl: [], wr: [], wrk: null, all: false
+    }, o));
+
+    function merge(lo, mid, hi) {
+      const tmp = new Array(hi - lo + 1).fill(null), taken = [];
+      calls.push(`merge(items, ${lo}, ${mid}, ${hi})`);
+      const base = () => ({ fn: "merge", lo, hi, mid, tmp: tmp.slice() });
+      snap(Object.assign(base(), { line: 1, msg: `Make <b>tmp</b> with room for ${hi - lo + 1} numbers. The left piece is slots ${lo}–${mid}, the right piece is ${mid + 1}–${hi}. Both are already sorted.` }));
+      let i = lo, j = mid + 1, k = 0;
+      snap(Object.assign(base(), { i, j, k, line: 2, msg: `${c("i")} starts at the front of the left piece, ${c("j")} at the front of the right piece, ${c("k")} at the first empty slot in tmp.` }));
+      while (i <= mid && j <= hi) {
+        if (a[i] <= a[j]) {
+          tmp[k] = a[i]; taken.push(i);
+          const oi = i, ok = k; i++; k++;
+          snap(Object.assign(base(), { i, j, k, taken: taken.slice(), hl: [oi, j], wrk: ok, line: 6,
+            msg: `Compare ${a[oi]} (left) with ${a[j]} (right). ${a[oi] === a[j] ? "They're equal, so take the left one." : a[oi] + " is smaller."} Copy it into <b>tmp[${ok}]</b>.` }));
+        } else {
+          tmp[k] = a[j]; taken.push(j);
+          const oj = j, ok = k; j++; k++;
+          snap(Object.assign(base(), { i, j, k, taken: taken.slice(), hl: [i, oj], wrk: ok, line: 8,
+            msg: `Compare ${a[i]} (left) with ${a[oj]} (right). ${a[oj]} is smaller. Copy it into <b>tmp[${ok}]</b>.` }));
+        }
+      }
+      if (i <= mid) snap(Object.assign(base(), { i, j, k, taken: taken.slice(), line: 4, msg: `The right piece is used up. Whatever is left on the left is already in order, so just copy it across.` }));
+      else if (j <= hi) snap(Object.assign(base(), { i, j, k, taken: taken.slice(), line: 4, msg: `The left piece is used up. Copy the rest of the right piece across.` }));
+      while (i <= mid) { tmp[k] = a[i]; taken.push(i); const oi = i, ok = k; i++; k++;
+        snap(Object.assign(base(), { i, j, k, taken: taken.slice(), hl: [oi], wrk: ok, line: 12, msg: `Copy leftover ${a[oi]} into <b>tmp[${ok}]</b>.` })); }
+      while (j <= hi) { tmp[k] = a[j]; taken.push(j); const oj = j, ok = k; j++; k++;
+        snap(Object.assign(base(), { i, j, k, taken: taken.slice(), hl: [oj], wrk: ok, line: 13, msg: `Copy leftover ${a[oj]} into <b>tmp[${ok}]</b>.` })); }
+      for (let x = lo; x <= hi; x++) a[x] = tmp[x - lo];
+      sorted.add(`${lo}-${hi}`);
+      const wr = []; for (let x = lo; x <= hi; x++) wr.push(x);
+      snap(Object.assign(base(), { wr, line: 16, msg: `tmp is full and in order. Copy it back into <b>items[${lo}..${hi}]</b>. Slots ${lo}–${hi} are now one sorted piece.` }));
+      snap({ fn: "merge", lo, hi, line: 18, msg: `${c("free(tmp)")}. This merge is done.` });
+      calls.pop();
+    }
+
+    function td(lo, hi) {
+      calls.push(`mergeSort(items, ${lo}, ${hi})`);
+      snap({ lo, hi, line: 0, msg: `Call ${c("mergeSort(items, " + lo + ", " + hi + ")")}: sort slots ${lo}–${hi}.` });
+      if (lo >= hi) {
+        sorted.add(`${lo}-${hi}`);
+        snap({ lo, hi, line: 1, msg: `Only one number (${a[lo]}). One number is already sorted, so return.` });
+        calls.pop(); return;
+      }
+      const mid = Math.floor((lo + hi) / 2);
+      snap({ lo, hi, mid, line: 2, msg: `${c("mid = (" + lo + " + " + hi + ") / 2 = " + mid)}${(lo + hi) % 2 ? " (C drops the .5)" : ""}. Left half is ${lo}–${mid}, right half is ${mid + 1}–${hi}.` });
+      snap({ lo, hi, mid, line: 3, msg: `Sort the left half first: slots ${lo}–${mid}.` });
+      td(lo, mid);
+      snap({ lo, hi, mid, line: 4, msg: `Left half is sorted. Now sort the right half: slots ${mid + 1}–${hi}.` });
+      td(mid + 1, hi);
+      snap({ lo, hi, mid, line: 5, msg: `Both halves are sorted. Merge them together.` });
+      merge(lo, mid, hi);
+      calls.pop();
+    }
+
+    function bu(lo, hi) {
+      calls.push(`mergeSortBottomUp(items, ${lo}, ${hi})`);
+      for (let x = lo; x <= hi; x++) sorted.add(`${x}-${x}`);
+      snap({ line: 0, msg: `Start bottom-up. No recursion: every single number already counts as a sorted piece of size 1.` });
+      for (let m = 1; m <= hi - lo; m *= 2) {
+        snap({ line: 1, msg: `${c("m = " + m)}: merge neighbouring pieces of size ${m} into pieces of size ${2 * m}.` });
+        for (let i = lo; i <= hi - m; i += 2 * m) {
+          const end = Math.min(i + 2 * m - 1, hi);
+          snap({ lo: i, hi: end, mid: i + m - 1, line: 3, msg: `${c("i = " + i)}, ${c("end = min(" + (i + 2 * m - 1) + ", " + hi + ") = " + end)}. Merge slots ${i}–${i + m - 1} with ${i + m}–${end}.` });
+          merge(i, i + m - 1, end);
+        }
+      }
+      calls.pop();
+    }
+
+    snap({ msg: `Ready to sort [${a.join(", ")}]. Press <b>Next</b>.` });
+    if (mode === "td") td(0, n - 1); else bu(0, n - 1);
+    snap({ all: true, msg: `Sorted! [${a.join(", ")}].` });
+    return S;
+  }
+
+  // ---------- render ----------
+  function render() {
+    const s = steps[cur], n = s.arr.length;
+    const merging = s.tmp !== null;
+    const code = s.fn === "merge" ? MERGE : (mode === "td" ? SORT_TD : SORT_BU);
+    $("crumb").textContent = s.call ? "Running: " + s.call : (mode === "td" ? "mergeSort" : "mergeSortBottomUp");
+    $("code").innerHTML = code.map((ln, k) =>
+      `<div class="ln${k === s.line ? " cur" : ""}"><span class="no">${k + 1}</span><span>${hl(ln)}</span></div>`).join("");
+
+    const inRun = new Array(n).fill(false);
+    s.sorted.forEach(key => { const [p, q] = key.split("-").map(Number); if (q > p) for (let x = p; x <= q; x++) inRun[x] = true; });
+
+    let h = `<div class="col labels"><div style="height:42px">items</div><div class="idx"></div><div class="ptr"></div>` +
+      (merging ? `<div class="gap"></div><div style="height:42px">tmp</div><div class="ptr"></div>` : "") + `</div>`;
+    for (let x = 0; x < n; x++) {
+      const inr = s.lo !== null && x >= s.lo && x <= s.hi;
+      const cls = ["box"];
+      if (s.all) cls.push("done");
+      else if (s.lo !== null && !inr) cls.push("out");
+      else if (s.wr.includes(x)) cls.push("write");
+      else if (s.hl.includes(x)) cls.push("compare");
+      else if (s.taken.includes(x)) cls.push("taken");
+      else if (inRun[x] && !merging) cls.push("run");
+
+      const ptrs = [];
+      if (merging && s.i === x && s.i <= s.mid) ptrs.push('<span class="p-i">↑i</span>');
+      if (merging && s.j === x && s.j <= s.hi) ptrs.push('<span class="p-j">↑j</span>');
+      if (!merging && s.mid === x && !s.all) ptrs.push('<span class="p-mid">↑mid</span>');
+
+      const split = s.mid !== null && !s.all && x === s.mid + 1 && inr;
+      h += `<div class="col${split ? " split" : ""}"><div class="${cls.join(" ")}">${s.arr[x]}</div><div class="idx">[${x}]</div><div class="ptr">${ptrs.join(" ")}</div>`;
+      if (merging) {
+        if (inr) {
+          const kk = x - s.lo, v = s.tmp[kk];
+          h += `<div class="gap"></div><div class="box tmp${v !== null ? " full" : ""}">${v === null ? "" : v}</div><div class="ptr">${s.k === kk && s.line !== 16 ? '<span class="p-k">↑k</span>' : ""}</div>`;
+        } else {
+          h += `<div class="gap"></div><div class="box none"></div><div class="ptr"></div>`;
+        }
+      }
+      h += `</div>`;
+    }
+    $("cols").innerHTML = h;
+
+    const f = [];
+    if (s.lo !== null) f.push(`lo = <b>${s.lo}</b>`, `hi = <b>${s.hi}</b>`);
+    if (s.mid !== null) f.push(`mid = <b>${s.mid}</b>`);
+    if (merging && s.i !== null) f.push(`i = <b>${s.i}</b>`, `j = <b>${s.j}</b>`, `k = <b>${s.k}</b>`);
+    $("facts").innerHTML = f.join("&nbsp;&nbsp;") || "&nbsp;";
+
+    $("msg").innerHTML = s.msg;
+    $("count").textContent = `step ${cur + 1} / ${steps.length}`;
+    $("back").disabled = cur === 0;
+    $("next").disabled = cur === steps.length - 1;
+  }
+
+  function go(i) { cur = Math.max(0, Math.min(steps.length - 1, i)); render(); if (cur === steps.length - 1) stop(); }
+  function stop() { clearInterval(timer); timer = null; $("play").textContent = "Play"; }
+  function play() {
+    if (cur === steps.length - 1) cur = 0;
+    $("play").textContent = "Pause";
+    timer = setInterval(() => go(cur + 1), 800);
+  }
+  function load() { stop(); steps = build(input.split(" ").map(Number)); go(0); }
+
+  // examples
+  EXAMPLES.forEach(([v, label], n) => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.setAttribute("aria-pressed", n === 0 ? "true" : "false");
+    b.onclick = () => {
+      document.querySelectorAll("#examples button").forEach(x => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      input = v; load();
+    };
+    $("examples").appendChild(b);
+  });
+  // version switch
+  document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll("[data-mode]").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    load();
+  });
+
+  $("next").onclick = () => { stop(); go(cur + 1); };
+  $("back").onclick = () => { stop(); go(cur - 1); };
+  $("again").onclick = () => { stop(); go(0); };
+  $("play").onclick = () => timer ? stop() : play();
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight") { stop(); go(cur + 1); }
+    else if (e.key === "ArrowLeft") { stop(); go(cur - 1); }
+  });
+
+  load();
+})();
+</script>
+
+</body></html>
