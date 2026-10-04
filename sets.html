@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: pick the implementation (unordered / ordered), then a function tab. Each panel = code on the left, the array on the right, Back/Next underneath. Stacks on phones. */
+:root {
+  --bg: #f4f5fa;
+  --surface: #ffffff;
+  --ink: #1b1e2b;
+  --muted: #5b6176;
+  --line: #d8dbe8;
+  --accent: #3434dc;
+  --ctl: #5f8a1c;
+  --comment: #767b8c;
+  --cur: #e9e9ff;
+  --cmp: #a8650a; --cmp-bg: #fdf0d6;
+  --ok: #17824a;  --ok-bg: #dcf4e6;
+  --wr: #3434dc;  --wr-bg: #e3e3ff;
+  --bad: #c42f2f; --bad-bg: #fde3e3;
+  --ghost: #a3a8b8;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12131a; --surface: #1b1d28; --ink: #e8e9f1; --muted: #9ba1b6; --line: #2f3245;
+    --accent: #9090ff; --ctl: #a9d15c; --comment: #8a8fa2; --cur: #262a48;
+    --cmp: #f2b84f; --cmp-bg: #3a2d14; --ok: #5ee08f; --ok-bg: #163322;
+    --wr: #a3a3ff; --wr-bg: #2a2a58; --bad: #ff8080; --bad-bg: #3e1c1c; --ghost: #5d6276;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12131a; --surface: #1b1d28; --ink: #e8e9f1; --muted: #9ba1b6; --line: #2f3245;
+  --accent: #9090ff; --ctl: #a9d15c; --comment: #8a8fa2; --cur: #262a48;
+  --cmp: #f2b84f; --cmp-bg: #3a2d14; --ok: #5ee08f; --ok-bg: #163322;
+  --wr: #a3a3ff; --wr-bg: #2a2a58; --bad: #ff8080; --bad-bg: #3e1c1c; --ghost: #5d6276;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: flex; flex-direction: column; gap: 20px; }
+
+header h1 { font-family: var(--font-code); font-size: 1.7rem; margin: 0; color: var(--accent); }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 68ch; }
+header code { font-family: var(--font-code); font-size: 0.92em; }
+
+/* implementation switch: segmented control */
+.impl { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; align-self: flex-start; }
+.impl button { font: 600 0.95rem var(--font-body); border: none; background: transparent; color: var(--muted); padding: 8px 16px; border-radius: 7px; }
+.impl button[aria-selected="true"] { background: var(--accent); color: var(--surface); }
+
+/* function tabs: underline */
+.fns { display: flex; gap: 4px; border-bottom: 2px solid var(--line); overflow-x: auto; margin-bottom: -20px; }
+.fns button { font: 600 0.95rem var(--font-code); color: var(--muted); background: transparent; border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px 16px; margin-bottom: -2px; white-space: nowrap; }
+.fns button:hover { color: var(--ink); }
+.fns button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+
+section.fn { background: var(--surface); border: 1px solid var(--line); border-top: none; border-radius: 0 0 12px 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.fn-head h2 { font-family: var(--font-code); font-size: 1.15rem; margin: 0; }
+.fn-head h2 small { font: 500 0.8rem var(--font-body); color: var(--muted); margin-left: 8px; }
+.fn-head p { margin: 4px 0 0; color: var(--muted); max-width: 68ch; }
+
+.examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.examples .lbl { font-size: 0.8rem; color: var(--muted); margin-right: 4px; }
+.examples button { font-family: var(--font-code); font-size: 0.85rem; }
+.examples button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+
+.body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .body { grid-template-columns: minmax(0, 1fr); } }
+
+.code { font-family: var(--font-code); font-size: 0.84rem; line-height: 1.7; overflow-x: auto; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); padding: 8px 0; min-width: 0; }
+.ln { display: grid; grid-template-columns: 2.4em max-content; padding-right: 14px; white-space: pre; border-left: 3px solid transparent; }
+.ln .no { color: var(--ghost); text-align: right; padding-right: 12px; user-select: none; }
+.ln.cur { background: var(--cur); border-left-color: var(--accent); }
+.kw { color: var(--accent); }
+.ct { color: var(--ctl); }
+.cm { color: var(--comment); font-style: italic; }
+
+.visual { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.arr { overflow-x: auto; }
+.grid8 { display: grid; grid-template-columns: repeat(8, minmax(34px, 1fr)); gap: 5px; max-width: 460px; }
+.mark { min-height: 20px; font: 700 0.7rem var(--font-code); }
+.mark div { text-align: center; white-space: nowrap; line-height: 1.25; }
+.mark.top div { color: var(--wr); }
+.mark .v-i, .mark .v-mid { color: var(--cmp); }
+.mark .v-lo, .mark .v-hi { color: var(--wr); }
+.cell { aspect-ratio: 1 / 1; max-width: 100%; display: grid; place-items: center; font: 700 1.1rem var(--font-code); border-radius: 6px; border: 2px solid var(--ink); background: var(--surface); transition: background .25s, border-color .25s, color .25s, transform .2s, opacity .25s; }
+.cell.unused { border: 2px dashed var(--ghost); color: var(--ghost); font-weight: 400; }
+.cell.out { opacity: 0.3; }
+.cell.compare { background: var(--cmp-bg); border-color: var(--cmp); color: var(--cmp); }
+.cell.match { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.cell.write { background: var(--wr-bg); border-color: var(--wr); color: var(--wr); }
+.cell.source { background: var(--cmp-bg); border-color: var(--cmp); color: var(--cmp); border-style: solid; }
+.cell.target { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); text-decoration: line-through; }
+.cell.pop { transform: scale(1.12); }
+.idx div { text-align: center; font: 0.72rem var(--font-code); color: var(--muted); }
+
+.facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-code); font-size: 0.9rem; }
+.facts b { font-variant-numeric: tabular-nums; }
+
+.msg { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 1rem; line-height: 1.55; min-height: 5.2em; }
+.msg code { font-family: var(--font-code); font-size: 0.9em; }
+.msg .yes { color: var(--ok); font-weight: 700; }
+.msg .no { color: var(--bad); font-weight: 700; }
+
+.steps { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.count { margin-left: auto; font: 0.8rem var(--font-code); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+button { font: 500 0.92rem var(--font-body); padding: 8px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.next { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+button:disabled { opacity: 0.4; cursor: default; }
+button:disabled:hover { border-color: var(--line); }
+
+.key { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--muted); }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; border: 2px solid var(--ink); display: inline-block; }
+.sw.u { border-style: dashed; border-color: var(--ghost); }
+.sw.o { opacity: 0.3; }
+.sw.c { background: var(--cmp-bg); border-color: var(--cmp); }
+.sw.m { background: var(--ok-bg); border-color: var(--ok); }
+.sw.w { background: var(--wr-bg); border-color: var(--wr); }
+
+/* linked list */
+.list { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 0; font-family: var(--font-code); }
+.li { display: flex; flex-direction: column; align-items: flex-start; }
+.lrow { display: flex; align-items: center; }
+.hd { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+.ar { color: var(--muted); padding: 0 6px; font-size: 1rem; }
+.node { min-width: 42px; height: 42px; padding: 0 8px; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 6px; background: var(--surface); font-weight: 700; font-size: 1.05rem; transition: background .25s, border-color .25s, color .25s, opacity .25s; }
+.node.compare { background: var(--cmp-bg); border-color: var(--cmp); color: var(--cmp); }
+.node.match { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.node.write { background: var(--wr-bg); border-color: var(--wr); color: var(--wr); }
+.node.gone { opacity: 0.4; border-style: dashed; text-decoration: line-through; }
+.nullbox { height: 42px; padding: 0 8px; display: grid; place-items: center; border: 2px dashed var(--ghost); border-radius: 6px; color: var(--muted); font-size: 0.8rem; }
+.lab { width: 42px; text-align: center; font-size: 0.7rem; font-weight: 700; line-height: 1.25; min-height: 1.3em; padding-top: 2px; }
+.lab .v-prev { color: var(--wr); } .lab .v-curr { color: var(--cmp); } .lab .v-nw { color: var(--ok); } .lab .v-gone { color: var(--bad); }
+.newrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--font-code); font-size: 0.85rem; color: var(--muted); padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .cell.pop { transform: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Sets</h1>
+    <p>Pick <b>Unordered</b>, <b>Ordered</b> or <b>Linked list</b>, then a function. Choose an example and press <b>Next</b> to run the code one line at a time. Every example starts from <code>[1 4 5 7 9]</code> (or <code>1 → 4 → 5 → 7 → 9</code> for the list) with <code>size = 5</code>.</p>
+  </header>
+
+  <div class="impl" role="tablist" aria-label="Implementation">
+    <button role="tab" data-impl="u" aria-selected="true">Unordered array</button>
+    <button role="tab" data-impl="o" aria-selected="false" tabindex="-1">Ordered array</button>
+    <button role="tab" data-impl="l" aria-selected="false" tabindex="-1">Linked list</button>
+  </div>
+
+  <div class="key">
+    <span><i class="sw"></i>counts (index &lt; size)</span>
+    <span><i class="sw u"></i>doesn't count</span>
+    <span><i class="sw c"></i>being checked</span>
+    <span><i class="sw m"></i>match</span>
+    <span><i class="sw w"></i>just written</span>
+    <span><i class="sw o"></i>ruled out by binary search</span>
+  </div>
+
+  <div class="fns" role="tablist" aria-label="Function">
+    <button role="tab" data-fn="contains" aria-selected="true">SetContains</button>
+    <button role="tab" data-fn="insert" aria-selected="false" tabindex="-1">SetInsert</button>
+    <button role="tab" data-fn="delete" aria-selected="false" tabindex="-1">SetDelete</button>
+  </div>
+
+  <section class="fn" id="u-contains" role="tabpanel">
+    <div class="fn-head"><h2>SetContains <small>unordered</small></h2><p>Is the number in the set? Check each used slot, left to right.</p></div>
+  </section>
+  <section class="fn" id="u-insert" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetInsert <small>unordered</small></h2><p>If the number isn't already there, put it in the first empty slot, then add 1 to size.</p></div>
+  </section>
+  <section class="fn" id="u-delete" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetDelete <small>unordered</small></h2><p>Find the number, copy the last value over it, then take 1 off size.</p></div>
+  </section>
+  <section class="fn" id="o-contains" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetContains <small>ordered</small></h2><p>The array is sorted, so use binary search: look at the middle, then throw away the half the number can't be in.</p></div>
+  </section>
+  <section class="fn" id="o-insert" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetInsert <small>ordered</small></h2><p>Binary search for where the number belongs, shift everything from there one place right, then drop it into the gap.</p></div>
+  </section>
+  <section class="fn" id="o-delete" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetDelete <small>ordered</small></h2><p>Binary search for the number, then shift everything after it one place left to cover it.</p></div>
+  </section>
+  <section class="fn" id="l-contains" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetContains <small>linked list</small></h2><p>Put your finger (<code>curr</code>) on the first node and follow the arrows until you find the number or hit NULL.</p></div>
+  </section>
+  <section class="fn" id="l-insert" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetInsert <small>linked list</small></h2><p>Walk <code>prev</code> and <code>curr</code> to the right spot, make a new node, then change one arrow to hook it in. No shifting.</p></div>
+  </section>
+  <section class="fn" id="l-delete" role="tabpanel" hidden>
+    <div class="fn-head"><h2>SetDelete <small>linked list</small></h2><p>Walk to the node, point the node before it past it, then free it. No shifting.</p></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const CODE = {
+    "u-contains": [
+      "bool SetContains(Set s, int elem) {",
+      "    for (int i = 0; i < s->size; i++) {",
+      "        if (s->elems[i] == elem) {",
+      "            return true;",
+      "        }",
+      "    }",
+      "",
+      "    return false;",
+      "}"
+    ],
+    "u-insert": [
+      "void SetInsert(Set s, int elem) {",
+      "    if (SetContains(s, elem)) {",
+      "        return;",
+      "    }",
+      "",
+      "    if (s->size == s->capacity) {",
+      "        // error message",
+      "    }",
+      "",
+      "    s->elems[s->size] = elem;",
+      "    s->size++;",
+      "}"
+    ],
+    "u-delete": [
+      "void SetDelete(Set s, int elem) {",
+      "    for (int i = 0; i < s->size; i++) {",
+      "        if (s->elems[i] == elem) {",
+      "            s->elems[i] = s->elems[s->size - 1];",
+      "            s->size--;",
+      "            return;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "o-contains": [
+      "bool SetContains(Set s, int elem) {",
+      "    int lo = 0;",
+      "    int hi = s->size - 1;",
+      "",
+      "    while (lo <= hi) {",
+      "        int mid = (lo + hi) / 2;",
+      "        if (elem < s->elems[mid]) {",
+      "            hi = mid - 1;",
+      "        } else if (elem > s->elems[mid]) {",
+      "            lo = mid + 1;",
+      "        } else {",
+      "            return true;",
+      "        }",
+      "    }",
+      "",
+      "    return false;",
+      "}"
+    ],
+    "o-insert": [
+      "void SetInsert(Set s, int elem) {",
+      "    int lo = 0;",
+      "    int hi = s->size;",
+      "",
+      "    while (lo < hi) {",
+      "        int mid = (lo + hi) / 2;",
+      "        if (s->elems[mid] < elem) {",
+      "            lo = mid + 1;",
+      "        } else {",
+      "            hi = mid;",
+      "        }",
+      "    }",
+      "",
+      "    if (lo < s->size && s->elems[lo] == elem) {",
+      "        return;",
+      "    }",
+      "",
+      "    if (s->size == s->capacity) {",
+      "        // error message",
+      "    }",
+      "",
+      "    for (int i = s->size; i > lo; i--) {",
+      "        s->elems[i] = s->elems[i - 1];",
+      "    }",
+      "",
+      "    s->elems[lo] = elem;",
+      "    s->size++;",
+      "}"
+    ],
+    "o-delete": [
+      "void SetDelete(Set s, int elem) {",
+      "    int lo = 0;",
+      "    int hi = s->size;",
+      "",
+      "    while (lo < hi) {",
+      "        int mid = (lo + hi) / 2;",
+      "        if (s->elems[mid] < elem) {",
+      "            lo = mid + 1;",
+      "        } else {",
+      "            hi = mid;",
+      "        }",
+      "    }",
+      "",
+      "    if (lo == s->size || s->elems[lo] != elem) {",
+      "        return;",
+      "    }",
+      "",
+      "    for (int i = lo; i < s->size - 1; i++) {",
+      "        s->elems[i] = s->elems[i + 1];",
+      "    }",
+      "",
+      "    s->size--;",
+      "}"
+    ],
+    "l-contains": [
+      "bool SetContains(Set s, int elem) {",
+      "    for (struct node *curr = s->elems; curr != NULL; curr = curr->next) {",
+      "        if (curr->elem == elem) {",
+      "            return true;",
+      "        }",
+      "    }",
+      "",
+      "    return false;",
+      "}"
+    ],
+    "l-insert": [
+      "void SetInsert(Set s, int elem) {",
+      "    struct node *prev = NULL;",
+      "    struct node *curr = s->elems;",
+      "",
+      "    while (curr != NULL && curr->elem < elem) {",
+      "        prev = curr;",
+      "        curr = curr->next;",
+      "    }",
+      "",
+      "    if (curr != NULL && curr->elem == elem) {",
+      "        return;",
+      "    }",
+      "",
+      "    struct node *new = malloc(sizeof(struct node));",
+      "    new->elem = elem;",
+      "    new->next = curr;",
+      "",
+      "    if (prev == NULL) {",
+      "        s->elems = new;",
+      "    } else {",
+      "        prev->next = new;",
+      "    }",
+      "",
+      "    s->size++;",
+      "}"
+    ],
+    "l-delete": [
+      "void SetDelete(Set s, int elem) {",
+      "    struct node *prev = NULL;",
+      "    struct node *curr = s->elems;",
+      "",
+      "    while (curr != NULL && curr->elem < elem) {",
+      "        prev = curr;",
+      "        curr = curr->next;",
+      "    }",
+      "",
+      "    if (curr == NULL || curr->elem != elem) {",
+      "        return;",
+      "    }",
+      "",
+      "    if (prev == NULL) {",
+      "        s->elems = curr->next;",
+      "    } else {",
+      "        prev->next = curr->next;",
+      "    }",
+      "",
+      "    free(curr);",
+      "    s->size--;",
+      "}"
+    ]
+  };
+  const EXAMPLES = {
+    "u-contains": [[5, "contains 5"], [6, "contains 6 (not there)"]],
+    "u-insert":   [[3, "insert 3"], [9, "insert 9 (already there)"]],
+    "u-delete":   [[4, "delete 4"], [9, "delete 9 (last one)"], [6, "delete 6 (not there)"]],
+    "o-contains": [[7, "contains 7"], [6, "contains 6 (not there)"], [1, "contains 1"]],
+    "o-insert":   [[6, "insert 6"], [2, "insert 2"], [10, "insert 10 (goes at end)"], [7, "insert 7 (already there)"]],
+    "o-delete":   [[4, "delete 4"], [9, "delete 9 (last one)"], [6, "delete 6 (not there)"]],
+    "l-contains": [[7, "contains 7"], [6, "contains 6 (not there)"]],
+    "l-insert":   [[6, "insert 6"], [0, "insert 0 (front)"], [10, "insert 10 (end)"], [7, "insert 7 (already there)"]],
+    "l-delete":   [[5, "delete 5"], [1, "delete 1 (first)"], [9, "delete 9 (last)"], [6, "delete 6 (not there)"]]
+  };
+  // which variables to show under the array for each panel
+  const SHOW = {
+    "u-contains": ["i"], "u-insert": [], "u-delete": ["i"],
+    "o-contains": ["lo", "hi", "mid"], "o-insert": ["lo", "hi", "mid", "i"], "o-delete": ["lo", "hi", "mid", "i"],
+    "l-contains": ["curr"], "l-insert": ["prev", "curr"], "l-delete": ["prev", "curr"]
+  };
+  const CAP = 8;
+  const START = () => ({ arr: [1, 4, 5, 7, 9, null, null, null], size: 5 });
+
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const c = s => "<code>" + esc(s) + "</code>";
+  const YES = '<span class="yes">yes</span>', NO = '<span class="no">no</span>';
+  const setStr = w => "[" + w.arr.slice(0, w.size).join(" ") + "]";
+
+  function hl(line) {
+    let codePart = line, comment = "";
+    const k = line.indexOf("//");
+    if (k >= 0) { codePart = line.slice(0, k); comment = line.slice(k); }
+    let h = esc(codePart)
+      .replace(/\b(void|int|bool|Set|struct)\b/g, '<span class="kw">$1</span>')
+      .replace(/\b(if|else|for|while|return|true|false)\b/g, '<span class="ct">$1</span>');
+    if (comment) h += '<span class="cm">' + esc(comment) + "</span>";
+    return h || " ";
+  }
+
+  // recorder: keeps a working copy of the set (w) and the current variables (V)
+  function recorder() {
+    const w = START(), V = {}, out = [];
+    const P = (line, msg, marks) => out.push({ line, msg, arr: w.arr.slice(), size: w.size, vars: Object.assign({}, V), marks: marks || {} });
+    return { w, V, out, P };
+  }
+  // grey out slots binary search has ruled out (outside lo..hi)
+  function outside(w, lo, hi, extra) {
+    const m = {};
+    for (let k = 0; k < w.size; k++) if (k < lo || k > hi) m[k] = "out";
+    return Object.assign(m, extra || {});
+  }
+
+  // ================= UNORDERED =================
+  function uContains(elem) {
+    const { w, V, out, P } = recorder();
+    P(0, `We call ${c("SetContains(s, " + elem + ")")}. So ${c("elem = " + elem)}.`);
+    for (let i = 0; ; i++) {
+      V.i = i;
+      if (i < w.size) {
+        P(1, `${c("i = " + i)}. Is ${c(i + " < " + w.size)}? ${YES}, so look at slot ${i}.`);
+        const v = w.arr[i];
+        if (v === elem) {
+          P(2, `Is ${c("elems[" + i + "] == " + elem)}? That's ${c(v + " == " + elem)}: ${YES}!`, { [i]: "match" });
+          P(3, `Found it. ${c("return true;")}`, { [i]: "match" });
+          return out;
+        }
+        P(2, `Is ${c("elems[" + i + "] == " + elem)}? That's ${c(v + " == " + elem)}: ${NO}. Try the next slot.`, { [i]: "compare" });
+      } else {
+        P(1, `${c("i = " + i)}. Is ${c(i + " < " + w.size)}? ${NO}, so the loop stops.`);
+        delete V.i;
+        P(7, `We checked every slot and never found ${elem}. ${c("return false;")}`);
+        return out;
+      }
+    }
+  }
+
+  function uInsert(elem) {
+    const { w, out, P } = recorder();
+    P(0, `We call ${c("SetInsert(s, " + elem + ")")}. So ${c("elem = " + elem)}.`);
+    const there = w.arr.slice(0, w.size).indexOf(elem);
+    if (there >= 0) {
+      P(1, `Is ${elem} already in the set? ${c("SetContains")} checks and finds it at slot ${there}: ${YES}.`, { [there]: "match" });
+      P(2, `${c("return;")} Stop here. A set can't hold ${elem} twice, so nothing changes.`, { [there]: "match" });
+      return out;
+    }
+    P(1, `Is ${elem} already in the set? ${c("SetContains")} checks every slot: ${NO}. Keep going.`);
+    P(5, `Is the array full? ${c(w.size + " == " + CAP)}? ${NO}, there's room.`);
+    const at = w.size;
+    P(9, `${c("s->elems[s->size] = elem")} means ${c("elems[" + at + "] = " + elem)}. Slot ${at} is the first empty slot.`, { [at]: "write" });
+    w.arr[at] = elem;
+    P(9, `${elem} is now in slot ${at}. Only that one slot changed.`, { [at]: "write" });
+    w.size++;
+    P(10, `${c("s->size++")}: size goes from ${at} to ${w.size}. Slot ${at} now counts. Done, the set is ${setStr(w)}.`, { [at]: "write" });
+    return out;
+  }
+
+  function uDelete(elem) {
+    const { w, V, out, P } = recorder();
+    P(0, `We call ${c("SetDelete(s, " + elem + ")")}. So ${c("elem = " + elem)}.`);
+    for (let i = 0; ; i++) {
+      V.i = i;
+      if (i >= w.size) {
+        P(1, `${c("i = " + i)}. Is ${c(i + " < " + w.size)}? ${NO}, so the loop stops.`);
+        delete V.i;
+        P(8, `${elem} was never found, so nothing changes. The set is still ${setStr(w)}.`);
+        return out;
+      }
+      P(1, `${c("i = " + i)}. Is ${c(i + " < " + w.size)}? ${YES}, so look at slot ${i}.`);
+      const v = w.arr[i];
+      if (v !== elem) {
+        P(2, `Is ${c("elems[" + i + "] == " + elem)}? That's ${c(v + " == " + elem)}: ${NO}. Try the next slot.`, { [i]: "compare" });
+        continue;
+      }
+      P(2, `Is ${c("elems[" + i + "] == " + elem)}? That's ${c(v + " == " + elem)}: ${YES}! Found it at slot ${i}.`, { [i]: "match" });
+      const last = w.size - 1;
+      if (i === last) {
+        P(3, `${c("elems[" + i + "] = elems[" + last + "]")}. It's already the last slot, so this copies ${v} onto itself. Nothing visible changes.`, { [i]: "match" });
+      } else {
+        P(3, `${c("elems[i] = elems[s->size - 1]")} means ${c("elems[" + i + "] = elems[" + last + "]")}. Copy the last value, ${w.arr[last]}, over the ${elem}.`, { [i]: "target", [last]: "source" });
+        w.arr[i] = w.arr[last];
+        P(3, `Slot ${i} now holds ${w.arr[i]}. The ${elem} is gone. The old ${w.arr[last]} is still in slot ${last} for now.`, { [i]: "write", [last]: "source" });
+      }
+      const old = w.size;
+      w.size--;
+      P(4, `${c("s->size--")}: size goes from ${old} to ${w.size}. Slot ${last} doesn't count anymore, so whatever is left there is ignored.`, i === last ? {} : { [i]: "write" });
+      P(5, `${c("return;")} Done. The set is now ${setStr(w)}.`);
+      return out;
+    }
+  }
+
+  // ================= ORDERED =================
+  function oContains(elem) {
+    const { w, V, out, P } = recorder();
+    P(0, `We call ${c("SetContains(s, " + elem + ")")}. The array is sorted, so we can use binary search.`);
+    V.lo = 0;
+    P(1, `${c("lo = 0")}: the left edge of the search.`);
+    V.hi = w.size - 1;
+    P(2, `${c("hi = s->size - 1 = " + V.hi)}: the right edge. We're searching slots ${V.lo} to ${V.hi}.`);
+    for (;;) {
+      const { lo, hi } = V;
+      if (!(lo <= hi)) {
+        delete V.mid;
+        P(4, `Is ${c("lo <= hi")}? ${c(lo + " <= " + hi)}? ${NO}. lo has passed hi, so there's nowhere left to look.`, outside(w, lo, hi));
+        P(15, `${c("return false;")} ${elem} isn't in the set.`, outside(w, lo, hi));
+        return out;
+      }
+      P(4, `Is ${c("lo <= hi")}? ${c(lo + " <= " + hi)}? ${YES}, keep searching.`, outside(w, lo, hi));
+      const mid = Math.floor((lo + hi) / 2), v = w.arr[mid];
+      V.mid = mid;
+      P(5, `${c("mid = (" + lo + " + " + hi + ") / 2 = " + mid)}${(lo + hi) % 2 ? " (C drops the .5)" : ""}. ${c("elems[" + mid + "]")} is ${v}.`, outside(w, lo, hi, { [mid]: "compare" }));
+      if (elem < v) {
+        P(6, `Is ${c(elem + " < " + v)}? ${YES}. So ${elem} must be to the <b>left</b> of slot ${mid}.`, outside(w, lo, hi, { [mid]: "compare" }));
+        V.hi = mid - 1;
+        P(7, `${c("hi = mid - 1 = " + V.hi)}. Slot ${mid} and everything right of it are ruled out.`, outside(w, V.lo, V.hi));
+      } else if (elem > v) {
+        P(6, `Is ${c(elem + " < " + v)}? ${NO}.`, outside(w, lo, hi, { [mid]: "compare" }));
+        P(8, `Is ${c(elem + " > " + v)}? ${YES}. So ${elem} must be to the <b>right</b> of slot ${mid}.`, outside(w, lo, hi, { [mid]: "compare" }));
+        V.lo = mid + 1;
+        P(9, `${c("lo = mid + 1 = " + V.lo)}. Slot ${mid} and everything left of it are ruled out.`, outside(w, V.lo, V.hi));
+      } else {
+        P(6, `Is ${c(elem + " < " + v)}? ${NO}.`, outside(w, lo, hi, { [mid]: "compare" }));
+        P(8, `Is ${c(elem + " > " + v)}? ${NO}.`, outside(w, lo, hi, { [mid]: "compare" }));
+        P(11, `Neither, so ${c("elems[" + mid + "] == " + elem)}. Found it! ${c("return true;")}`, outside(w, lo, hi, { [mid]: "match" }));
+        return out;
+      }
+    }
+  }
+
+  // shared binary search used by ordered insert and delete (lines 2-12)
+  function findSpot(r, elem, forInsert) {
+    const { w, V, P } = r;
+    V.lo = 0;
+    P(1, `${c("lo = 0")}.`);
+    V.hi = w.size;
+    P(2, `${c("hi = s->size = " + V.hi)}. That's one past the last number${forInsert ? ", because " + elem + " might belong right at the end" : ""}.`);
+    for (;;) {
+      const { lo, hi } = V;
+      if (!(lo < hi)) {
+        delete V.mid;
+        const m = outside(w, lo, hi);
+        if (lo < w.size) m[lo] = "compare";
+        P(4, `Is ${c("lo < hi")}? ${c(lo + " < " + hi)}? ${NO}, so the search stops. <b>lo = ${lo}</b> is the first slot whose number is ≥ ${elem}.`, m);
+        return lo;
+      }
+      P(4, `Is ${c("lo < hi")}? ${c(lo + " < " + hi)}? ${YES}, keep searching.`, outside(w, lo, hi));
+      const mid = Math.floor((lo + hi) / 2), v = w.arr[mid];
+      V.mid = mid;
+      P(5, `${c("mid = (" + lo + " + " + hi + ") / 2 = " + mid)}${(lo + hi) % 2 ? " (C drops the .5)" : ""}. ${c("elems[" + mid + "]")} is ${v}.`, outside(w, lo, hi, { [mid]: "compare" }));
+      if (v < elem) {
+        P(6, `Is ${c(v + " < " + elem)}? ${YES}. So ${elem} belongs <b>after</b> slot ${mid}.`, outside(w, lo, hi, { [mid]: "compare" }));
+        V.lo = mid + 1;
+        P(7, `${c("lo = mid + 1 = " + V.lo)}.`, outside(w, V.lo, V.hi));
+      } else {
+        P(6, `Is ${c(v + " < " + elem)}? ${NO}. So ${elem} belongs at slot ${mid} or before it.`, outside(w, lo, hi, { [mid]: "compare" }));
+        V.hi = mid;
+        P(9, `${c("hi = mid = " + V.hi)}.`, outside(w, V.lo, V.hi));
+      }
+    }
+  }
+
+  function oInsert(elem) {
+    const r = recorder(), { w, V, out, P } = r;
+    P(0, `We call ${c("SetInsert(s, " + elem + ")")}. First, binary search for <b>where</b> ${elem} should go so the array stays sorted.`);
+    const lo = findSpot(r, elem, true);
+    if (lo < w.size && w.arr[lo] === elem) {
+      P(13, `Is ${c("lo < size")} and ${c("elems[" + lo + "] == " + elem)}? ${YES}, ${elem} is already there.`, { [lo]: "match" });
+      P(14, `${c("return;")} A set can't hold ${elem} twice, so nothing changes.`, { [lo]: "match" });
+      return out;
+    }
+    P(13, lo < w.size
+      ? `Is ${c("elems[" + lo + "] == " + elem)}? It's ${w.arr[lo]}, so ${NO}. ${elem} isn't in the set yet.`
+      : `Is ${c("lo < size")}? ${c(lo + " < " + w.size)}? ${NO}. ${elem} is bigger than everything, so it isn't in the set yet.`);
+    P(17, `Is the array full? ${c(w.size + " == " + CAP)}? ${NO}, there's room.`);
+    for (let i = w.size; ; i--) {
+      V.i = i;
+      if (!(i > lo)) {
+        P(21, i === w.size
+          ? `${c("i = " + i)}. Is ${c(i + " > " + lo)}? ${NO}. Nothing needs shifting, ${elem} goes at the end.`
+          : `${c("i = " + i)}. Is ${c(i + " > " + lo)}? ${NO}, so the shifting stops. Slot ${lo} can now be overwritten (its old value was copied right).`,
+          { [lo]: "compare" });
+        break;
+      }
+      P(21, `${c("i = " + i)}. Is ${c(i + " > " + lo)}? ${YES}.`);
+      w.arr[i] = w.arr[i - 1];
+      P(22, `${c("elems[" + i + "] = elems[" + (i - 1) + "]")}: copy ${w.arr[i]} one slot to the right.`, { [i]: "write", [i - 1]: "source" });
+    }
+    delete V.i;
+    w.arr[lo] = elem;
+    P(25, `${c("elems[" + lo + "] = " + elem)}. ${elem} drops into the gap.`, { [lo]: "write" });
+    const old = w.size;
+    w.size++;
+    P(26, `${c("s->size++")}: size goes from ${old} to ${w.size}. Done, the set is ${setStr(w)}. Still sorted.`, { [lo]: "write" });
+    return out;
+  }
+
+  function oDelete(elem) {
+    const r = recorder(), { w, V, out, P } = r;
+    P(0, `We call ${c("SetDelete(s, " + elem + ")")}. First, binary search for where ${elem} is.`);
+    const lo = findSpot(r, elem, false);
+    if (lo === w.size || w.arr[lo] !== elem) {
+      P(13, lo === w.size
+        ? `Is ${c("lo == size")}? ${c(lo + " == " + w.size)}? ${YES}, so ${elem} isn't in the set.`
+        : `Is ${c("elems[" + lo + "] != " + elem)}? It's ${w.arr[lo]}, so ${YES}. ${elem} isn't in the set.`, lo < w.size ? { [lo]: "compare" } : {});
+      P(14, `${c("return;")} Nothing changes. The set is still ${setStr(w)}.`);
+      return out;
+    }
+    P(13, `${c("elems[" + lo + "]")} is ${elem}, so it's there. Keep going.`, { [lo]: "target" });
+    for (let i = lo; ; i++) {
+      V.i = i;
+      if (!(i < w.size - 1)) {
+        P(17, `${c("i = " + i)}. Is ${c(i + " < " + (w.size - 1))}? ${NO}, so the shifting stops.`);
+        break;
+      }
+      P(17, `${c("i = " + i)}. Is ${c(i + " < " + (w.size - 1))}? ${YES}.`, i === lo ? { [lo]: "target" } : {});
+      w.arr[i] = w.arr[i + 1];
+      P(18, `${c("elems[" + i + "] = elems[" + (i + 1) + "]")}: copy ${w.arr[i]} one slot to the left.`, { [i]: "write", [i + 1]: "source" });
+    }
+    delete V.i;
+    const old = w.size;
+    w.size--;
+    P(21, `${c("s->size--")}: size goes from ${old} to ${w.size}. Slot ${w.size} doesn't count anymore. Done, the set is ${setStr(w)}.`);
+    return out;
+  }
+
+  // ================= LINKED LIST =================
+  // nodes are kept in list order; vars.prev / vars.curr are positions (curr == nodes.length means NULL, prev == -1 means NULL)
+  function lrec() {
+    const r = { L: { nodes: [1, 4, 5, 7, 9].map(v => ({ v })), size: 5 }, V: {}, out: [], NN: null };
+    r.P = (line, msg, marks) => r.out.push({
+      line, msg, size: r.L.size, vars: Object.assign({}, r.V),
+      nodes: r.L.nodes.map((n, k) => ({ v: n.v, gone: !!n.gone, cls: (marks || {})[k] || "" })),
+      newNode: r.NN ? Object.assign({}, r.NN) : null
+    });
+    return r;
+  }
+  const listStr = L => L.nodes.filter(n => !n.gone).map(n => n.v).join(" → ") + " → NULL";
+
+  function lContains(elem) {
+    const r = lrec(), { L, V, P } = r, n = L.nodes.length;
+    P(0, `We call ${c("SetContains(s, " + elem + ")")}. So ${c("elem = " + elem)}.`);
+    for (let k = 0; ; k++) {
+      V.curr = k;
+      if (k >= n) {
+        P(1, `${c("curr = curr->next")}: node ${L.nodes[n - 1].v} was the last one, so ${c("curr")} is now NULL. Is ${c("curr != NULL")}? ${NO}, the loop stops.`);
+        P(7, `We followed every arrow and never found ${elem}. ${c("return false;")}`);
+        return r.out;
+      }
+      const v = L.nodes[k].v;
+      P(1, k === 0
+        ? `${c("curr = s->elems")}: ${c("curr")} points at the first node (${v}). Is ${c("curr != NULL")}? ${YES}.`
+        : `${c("curr = curr->next")}: ${c("curr")} follows the arrow to node ${v}. Is ${c("curr != NULL")}? ${YES}.`, { [k]: "compare" });
+      if (v === elem) {
+        P(2, `Is ${c("curr->elem == elem")}? That's ${c(v + " == " + elem)}: ${YES}!`, { [k]: "match" });
+        P(3, `Found it. ${c("return true;")}`, { [k]: "match" });
+        return r.out;
+      }
+      P(2, `Is ${c("curr->elem == elem")}? That's ${c(v + " == " + elem)}: ${NO}. Follow the arrow.`, { [k]: "compare" });
+    }
+  }
+
+  // shared walk (lines 2-8 of insert and delete)
+  function lWalk(r, elem) {
+    const { L, V, P } = r, n = L.nodes.length;
+    V.prev = -1;
+    P(1, `${c("prev = NULL")}: there's no node before the first one.`);
+    V.curr = 0;
+    P(2, `${c("curr = s->elems")}: ${c("curr")} points at the first node (${L.nodes[0].v}).`, { 0: "compare" });
+    for (;;) {
+      const k = V.curr;
+      if (k >= n) {
+        P(4, `Is ${c("curr != NULL")}? ${NO}, ${c("curr")} went past the last node. The loop stops.`);
+        return;
+      }
+      const v = L.nodes[k].v;
+      if (!(v < elem)) {
+        P(4, `${c("curr != NULL")} ✓. Is ${c("curr->elem < elem")}? ${c(v + " < " + elem)}? ${NO}, so the loop stops here.`, { [k]: "compare" });
+        return;
+      }
+      P(4, `${c("curr != NULL")} ✓. Is ${c("curr->elem < elem")}? ${c(v + " < " + elem)}? ${YES}, keep walking.`, { [k]: "compare" });
+      V.prev = k;
+      P(5, `${c("prev = curr")}: ${c("prev")} moves to node ${v}.`, { [k]: "compare" });
+      V.curr = k + 1;
+      P(6, k + 1 < n
+        ? `${c("curr = curr->next")}: ${c("curr")} moves to node ${L.nodes[k + 1].v}.`
+        : `${c("curr = curr->next")}: node ${v} was the last one, so ${c("curr")} becomes NULL.`, k + 1 < n ? { [k + 1]: "compare" } : {});
+    }
+  }
+
+  function lInsert(elem) {
+    const r = lrec(), { L, V, P } = r;
+    P(0, `We call ${c("SetInsert(s, " + elem + ")")}. First walk ${c("prev")} and ${c("curr")} to where ${elem} belongs.`);
+    lWalk(r, elem);
+    const k = V.curr, n = L.nodes.length;
+    if (k < n && L.nodes[k].v === elem) {
+      P(9, `Is ${c("curr->elem == elem")}? ${c(elem + " == " + elem)}? ${YES}, ${elem} is already in the list.`, { [k]: "match" });
+      P(10, `${c("return;")} A set can't hold ${elem} twice, so nothing changes.`, { [k]: "match" });
+      return r.out;
+    }
+    P(9, k < n
+      ? `Is ${c("curr->elem == elem")}? ${c(L.nodes[k].v + " == " + elem)}? ${NO}. ${elem} isn't in the list yet.`
+      : `${c("curr")} is NULL, so ${elem} isn't in the list yet. It's bigger than everything.`);
+    r.NN = { v: "?", next: "?" };
+    P(13, `${c("malloc")} makes a brand-new node. Nothing points to it yet, and it doesn't point anywhere yet.`);
+    r.NN.v = elem;
+    P(14, `${c("new->elem = " + elem)}.`);
+    const nextLabel = k < n ? "node " + L.nodes[k].v : "NULL";
+    r.NN.next = nextLabel;
+    P(15, `${c("new->next = curr")}: the new node points at ${k < n ? "node " + L.nodes[k].v : "NULL, so it will be the last node"}. It's still not in the list, because nothing points <i>to</i> it.`, k < n ? { [k]: "compare" } : {});
+    const hook = () => { L.nodes.splice(k, 0, { v: elem }); V.nw = k; V.curr = k + 1; r.NN = null; };
+    if (V.prev === -1) {
+      P(17, `Is ${c("prev == NULL")}? ${YES}. ${elem} goes at the very front, so there's no node before it to change.`);
+      hook();
+      P(18, `${c("s->elems = new")}: the list now starts at ${elem}.`, { [k]: "write" });
+    } else {
+      const pv = L.nodes[V.prev].v;
+      P(17, `Is ${c("prev == NULL")}? ${NO}, ${c("prev")} is node ${pv}.`, { [V.prev]: "compare" });
+      hook();
+      P(20, `${c("prev->next = new")}: node ${pv} now points at ${elem} instead of ${nextLabel}. ${elem} is in the list!`, { [k]: "write" });
+    }
+    L.size++;
+    P(23, `${c("s->size++")}: size goes from ${L.size - 1} to ${L.size}. Done: ${listStr(L)}. Nothing was shifted.`, { [k]: "write" });
+    return r.out;
+  }
+
+  function lDelete(elem) {
+    const r = lrec(), { L, V, P } = r;
+    P(0, `We call ${c("SetDelete(s, " + elem + ")")}. First walk ${c("prev")} and ${c("curr")} to where ${elem} should be.`);
+    lWalk(r, elem);
+    const k = V.curr, n = L.nodes.length;
+    if (k >= n || L.nodes[k].v !== elem) {
+      P(9, k >= n
+        ? `Is ${c("curr == NULL")}? ${YES}, we walked off the end, so ${elem} isn't in the list.`
+        : `Is ${c("curr->elem != elem")}? ${c(L.nodes[k].v + " != " + elem)}? ${YES}, so ${elem} isn't in the list.`, k < n ? { [k]: "compare" } : {});
+      P(10, `${c("return;")} Nothing changes.`);
+      return r.out;
+    }
+    P(9, `${c("curr")} isn't NULL and ${c("curr->elem == " + elem)}, so we found it. Keep going.`, { [k]: "match" });
+    const nextLabel = k + 1 < n ? "node " + L.nodes[k + 1].v : "NULL";
+    if (V.prev === -1) {
+      P(13, `Is ${c("prev == NULL")}? ${YES}, ${elem} is the first node.`, { [k]: "match" });
+      L.nodes[k].gone = true;
+      P(14, `${c("s->elems = curr->next")}: the list now starts at ${nextLabel} and skips ${elem}.`);
+    } else {
+      const pv = L.nodes[V.prev].v;
+      P(13, `Is ${c("prev == NULL")}? ${NO}, ${c("prev")} is node ${pv}.`, { [V.prev]: "compare", [k]: "match" });
+      L.nodes[k].gone = true;
+      P(16, `${c("prev->next = curr->next")}: node ${pv} now points at ${nextLabel}, skipping over ${elem}. ${elem} is no longer in the list, but it still exists in memory.`, { [V.prev]: "write" });
+    }
+    L.nodes.splice(k, 1);
+    delete V.curr;
+    P(19, `${c("free(curr)")}: node ${elem}'s memory is given back. It's gone for good.`);
+    L.size--;
+    P(20, `${c("s->size--")}: size goes from ${L.size + 1} to ${L.size}. Done: ${listStr(L)}. Nothing was shifted.`);
+    return r.out;
+  }
+
+  const BUILD = { "u-contains": uContains, "u-insert": uInsert, "u-delete": uDelete, "o-contains": oContains, "o-insert": oInsert, "o-delete": oDelete, "l-contains": lContains, "l-insert": lInsert, "l-delete": lDelete };
+
+  // ================= one widget per panel =================
+  function setup(sec) {
+    const key = sec.id;
+    sec.insertAdjacentHTML("beforeend", `
+      <div class="examples"><span class="lbl">Example:</span></div>
+      <div class="body">
+        <div class="code"></div>
+        <div class="visual">
+          <div class="arr">
+            <div class="grid8 mark top"></div>
+            <div class="grid8 cells"></div>
+            <div class="grid8 idx"></div>
+            <div class="grid8 mark bot"></div>
+          </div>
+          <div class="list"></div>
+          <div class="newrow" hidden></div>
+          <div class="facts"></div>
+          <div class="msg" aria-live="polite"></div>
+          <div class="steps">
+            <button class="back">&larr; Back</button>
+            <button class="next">Next &rarr;</button>
+            <button class="again">Start again</button>
+            <span class="count"></span>
+          </div>
+        </div>
+      </div>`);
+    const q = s => sec.querySelector(s);
+    const exBox = q(".examples");
+    let steps = [], cur = 0, prev = null;
+
+    EXAMPLES[key].forEach(([v, label], n) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.setAttribute("aria-pressed", n === 0 ? "true" : "false");
+      b.onclick = () => {
+        exBox.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", "false"));
+        b.setAttribute("aria-pressed", "true");
+        load(v);
+      };
+      exBox.appendChild(b);
+    });
+
+    function load(v) { steps = BUILD[key](v); cur = 0; prev = null; render(); }
+
+    const isList = key[0] === "l";
+    q(".arr").hidden = isList;
+    q(".list").hidden = !isList;
+
+    function renderList(s) {
+      const n = s.nodes.length;
+      const lab = names => `<div class="lab">${names.join("<br>")}</div>`;
+      let h = `<div class="li"><div class="lrow"><span class="hd">s-&gt;elems</span><span class="ar">&rarr;</span></div></div>`;
+      s.nodes.forEach((nd, k) => {
+        const names = [];
+        if (s.vars.prev === k) names.push('<span class="v-prev">&uarr;prev</span>');
+        if (s.vars.curr === k) names.push('<span class="v-curr">&uarr;curr</span>');
+        if (s.vars.nw === k) names.push('<span class="v-nw">&uarr;new</span>');
+        if (nd.gone) names.push('<span class="v-gone">skipped</span>');
+        h += `<div class="li"><div class="lrow"><div class="node ${nd.cls}${nd.gone ? " gone" : ""}">${nd.v}</div><span class="ar">&rarr;</span></div>${lab(names)}</div>`;
+      });
+      h += `<div class="li"><div class="lrow"><div class="nullbox">NULL</div></div>${lab(s.vars.curr === n ? ['<span class="v-curr">&uarr;curr</span>'] : [])}</div>`;
+      q(".list").innerHTML = h;
+      const nr = q(".newrow");
+      if (s.newNode) {
+        nr.hidden = false;
+        nr.innerHTML = `<span>new &rarr;</span><div class="node write">${s.newNode.v}</div><span>next &rarr; <b>${s.newNode.next}</b></span><span>(not in the list yet)</span>`;
+      } else nr.hidden = true;
+    }
+    function listVal(s, name) {
+      const v = s.vars[name];
+      if (v === undefined) return "–";
+      if (v === -1 || v >= s.nodes.length) return "NULL";
+      return "node " + s.nodes[v].v;
+    }
+
+    function render() {
+      const s = steps[cur];
+      if (isList) {
+        q(".code").innerHTML = CODE[key].map((ln, k) =>
+          `<div class="ln${k === s.line ? " cur" : ""}"><span class="no">${k + 1}</span><span>${hl(ln)}</span></div>`).join("");
+        renderList(s);
+        const facts = [`<span>size = <b>${s.size}</b></span>`];
+        SHOW[key].forEach(n => facts.push(`<span>${n} = <b>${listVal(s, n)}</b></span>`));
+        q(".facts").innerHTML = facts.join("");
+        q(".msg").innerHTML = s.msg;
+        q(".count").textContent = `step ${cur + 1} / ${steps.length}`;
+        q(".back").disabled = cur === 0;
+        q(".next").disabled = cur === steps.length - 1;
+        prev = s;
+        return;
+      }
+      q(".code").innerHTML = CODE[key].map((ln, k) =>
+        `<div class="ln${k === s.line ? " cur" : ""}"><span class="no">${k + 1}</span><span>${hl(ln)}</span></div>`).join("");
+
+      let cells = "", idx = "", top = "", bot = "";
+      for (let k = 0; k < CAP; k++) {
+        const v = s.arr[k];
+        let cls = "cell";
+        if (k >= s.size) cls += " unused";
+        if (s.marks[k]) cls += " " + s.marks[k];
+        if (prev && prev.arr[k] !== v) cls += " pop";
+        cells += `<div class="${cls}">${v === null ? "" : v}</div>`;
+        idx += `<div>[${k}]</div>`;
+        top += `<div>${k === s.size ? "size&darr;" : ""}</div>`;
+        const names = SHOW[key].filter(n => s.vars[n] === k);
+        bot += `<div>${names.map(n => `<span class="v-${n}">&uarr;${n}</span>`).join("<br>")}</div>`;
+      }
+      q(".cells").innerHTML = cells;
+      q(".idx").innerHTML = idx;
+      q(".mark.top").innerHTML = top;
+      q(".mark.bot").innerHTML = bot;
+      if (prev && prev.arr.some((v, k) => v !== s.arr[k])) {
+        setTimeout(() => sec.querySelectorAll(".cell.pop").forEach(e => e.classList.remove("pop")), 220);
+      }
+
+      const facts = [`<span>size = <b>${s.size}</b></span>`, `<span>capacity = <b>${CAP}</b></span>`];
+      SHOW[key].forEach(n => facts.push(`<span>${n} = <b>${s.vars[n] === undefined ? "–" : s.vars[n]}</b></span>`));
+      q(".facts").innerHTML = facts.join("");
+
+      q(".msg").innerHTML = s.msg;
+      q(".count").textContent = `step ${cur + 1} / ${steps.length}`;
+      q(".back").disabled = cur === 0;
+      q(".next").disabled = cur === steps.length - 1;
+      prev = s;
+    }
+
+    q(".next").onclick = () => { if (cur < steps.length - 1) { cur++; render(); } };
+    q(".back").onclick = () => { if (cur > 0) { cur--; prev = null; render(); } };
+    q(".again").onclick = () => { cur = 0; prev = null; render(); };
+
+    load(EXAMPLES[key][0][0]);
+  }
+
+  document.querySelectorAll("section.fn").forEach(setup);
+
+  // ================= tabs =================
+  const implTabs = Array.from(document.querySelectorAll("[data-impl]"));
+  const fnTabs = Array.from(document.querySelectorAll("[data-fn]"));
+  let impl = "u", fn = "contains";
+
+  function show() {
+    implTabs.forEach(t => { const on = t.dataset.impl === impl; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; });
+    fnTabs.forEach(t => { const on = t.dataset.fn === fn; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; });
+    document.querySelectorAll("section.fn").forEach(s => { s.hidden = s.id !== impl + "-" + fn; });
+    try { localStorage.setItem("sets-tab", impl + "-" + fn); } catch (e) {}
+  }
+  function wire(tabs, apply) {
+    tabs.forEach((t, n) => {
+      t.onclick = () => { apply(t); show(); };
+      t.onkeydown = e => {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        const nt = tabs[(n + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        apply(nt); show(); nt.focus(); e.preventDefault();
+      };
+    });
+  }
+  wire(implTabs, t => { impl = t.dataset.impl; });
+  wire(fnTabs, t => { fn = t.dataset.fn; });
+
+  try {
+    const saved = localStorage.getItem("sets-tab");
+    if (saved && document.getElementById(saved)) { [impl, fn] = saved.split("-"); }
+  } catch (e) {}
+  show();
+})();
+</script>
+</body>
+</html>
